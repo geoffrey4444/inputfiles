@@ -1,0 +1,20 @@
+#=============================================================================
+Observers=
+#%%%    Add(ObservationTrigger = EveryDeltaT(DeltaT=.1);
+#%%%        Observers = 
+#%%%        DumpTensors(Input=psi,kappa;),
+#%%%        ),
+    Add(ObservationTrigger = EveryDeltaT(DeltaT=0.1;NoTriggerOnZero=no);
+        Observers =
+	ObserveInSubdir(Subdir=Constraints; Observers=
+        NormOfTensor(Input=GhCe; Filename=GhCe_Norms.dat;
+                     Op=VolLp(p=2; SqrtDetg=SqrtDetg),L2, Linf;),
+        NormOfTensor(Input=GhCe; Filename=GhCe_Linf.dat;
+                     Op=Linf;EachSubdomainSeparately=yes),
+        NormOfTensor(Input=psiErr; Filename=psiErr_Linf.dat;
+                     Op=Linf;MetricForTensors=None;
+                     EachSubdomainSeparately=yes),
+        NormOfTensor(Input=kappaErr; Filename=kappaErr_Linf.dat;
+                     Op=Linf;MetricForTensors=None;
+                     EachSubdomainSeparately=yes),);
+        );

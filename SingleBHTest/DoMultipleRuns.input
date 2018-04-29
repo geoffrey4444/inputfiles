@@ -1,0 +1,59 @@
+# Which levels (i.e. resolutions) to run?
+
+$MinLev = 1;
+$MaxLev = 1;
+
+$FinalTime = 0.1;
+$FinalStep = 1e6;
+
+# if non-zero, then run with only two shell.  This is quick (for benchmarking),
+# and appears to be convergent for the inner shell when running to Tfinal=2M.
+# However, the outer shell is not convergent, and this is likely
+# unstable, because the outer boundary is much too close.  If zero,
+# then run with 12 shells.
+$JustTwoShells = 0;
+
+# Get the preferences set in the user's ~/.SpEC file
+# This is used here only to cache Ylm-filters, which are
+# very expensive to compute. 
+my %opts = RunGetDotSpecOptions();
+my $TensorYlmDataBaseDir = $opts{"TensorYlmDataBaseDir"};
+
+$InitLAh = 12;
+$MeasureFractionOfChunk = 0.25;
+
+for($k=$MinLev; $k<=$MaxLev; ++$k) { # loop over levels
+  $TruncationErrorMax = 0.0001*exp(-$k);
+  $AhMaxTrunc = $TruncationErrorMax;
+  $AhMinTrunc = $AhMaxTrunc/10.0;
+
+
+  $DIR = "Lev".$k;
+  CreateSubmitScript(
+    Cores   => 1,
+    Jobname => $DIR,
+  );
+
+  RunInDirectory($DIR,
+  {
+    "ApparentHorizonFinders.input" => {
+                     "__InitLAh__"         => $InitLAh,
+                     "__AhGuessRadius__"   => 24,
+                     "__MeasureFractionOfChunk__" => $MeasureFractionOfChunk,
+                     "__AhMinTrunc__"      => $AhMinTrunc,
+                     "__AhMaxTrunc__"      => $AhMaxTrunc,
+    },
+    "Domain.input" => {
+      "__Nr__"   => 9+4*$k,
+      "__L__"    => 5+2*$k,
+      "__TwoShells__" => ($JustTwoShells ? "; #": "")
+    },
+    "Evolution.input" => {
+      "__time__"      => "0.0",
+      "__FinalTime__" => $FinalTime,
+      "__FinalStep__" => $FinalStep,
+      "__TensorYlmDataBaseDir__" => $TensorYlmDataBaseDir,
+    },
+  }
+  );
+}

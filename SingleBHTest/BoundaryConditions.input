@@ -1,0 +1,15 @@
+BoundaryConditions=
+    SliceLFF*(Bc=ZeroBc;),
+    SliceUFF*(Method=Bjorhus;
+              Bc= GeneralizedHarmonicFoshConstraint
+              (PhysBc            = true;
+                AdjustPhysUsingC4 = true;
+                Gamma2InPhysBc    = true;
+                GaugeBc           = Sommerfeld
+                (Map=GridToGrid::SpatialCoordMap; Coefficient = 1);
+                U2Bc   = true;
+                U0Bc   = true;
+                PsiBc  = true;
+                Mu     = 0.0;
+                MuPhys = 0.0);
+              );

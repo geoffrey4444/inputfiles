@@ -1,0 +1,146 @@
+DenseStateChangers = AhC(DenseTriggerForApply=AhTrigger);
+
+StateChangerDenseTriggers=
+    AhTrigger(Trigger=
+              Or(DenseTriggers =
+                 EveryChunk(NoTriggerOnZero=no),
+                 EveryNSteps(NSteps=1;NoTriggerAfterStep=10),
+                 StepAfterChunkFraction(Frac=__MeasureFractionOfChunk__;
+                                        TstartIsStartOfChunk =yes;
+                                        NoTriggerNearChunkEps = 0.05;);
+                 )
+              );
+
+StateChangerTags =
+    AhC(
+        StateChanger=
+        ParallelStrahlkorperFinder
+           (Output                  = AhC;
+            MapPrefix               = GridToGrid;
+            CheckpointFile          = Cp-StrahlkorperC.dat;
+            Center                  = 0,0,0;
+            TopologicalInterpolator = Radial(FallbackInterpolator=CardinalInterpolator);
+            TerminateOnFailure      = true;
+            InitialGuess            = Sphere(Radius=__AhGuessRadius__;);
+            Adaptive                = yes;
+            LmaxFromSphereResolution= yes;
+            MaxItsFailureRefinementFactor    = 1.25;
+            MaxItsFailureMaxRefinementFactor = 3.0;
+            OptsToStrahlkorperFinder         =
+            (Prefix             = AhC;
+             SpatialMetric      = g;
+             NthetaFormula      = floor(max(1.5*L,L+2));
+             MinL               = 8;
+             InitL              = __InitLAh__;
+             AdaptiveLSelectors =
+             Residual(MinValue             =__AhMinTrunc__;
+                      MaxValue             =__AhMaxTrunc__;
+                      UseNormalizedResidual=yes;
+                      ),
+             SurfaceShape(MinTruncationError = __AhMinTrunc__;
+                          MaxTruncationError = __AhMaxTrunc__;);
+             StrahlkorperResidual
+             =ConstantExpansion(Expansion=0.0;
+                                InvMetric=Invg;
+                                ExCurv   =K;
+                                Gamma    =SpatialChristoffel2ndKind);
+             StrahlkorperFinderAlgorithm=
+             FastFlow(InvMetric=Invg;
+                      Verbosity=0;
+                      DivergenceTol=5;
+                      TruncationTol=1.e-5;
+                      MaxInterpRetries=3;
+                      );
+             )
+            );
+        );
+
+#=============================================================================
+EventAndItemAdders =
+  AddStrahlkorperPhysicalQuantities(
+    ObservationTrigger = EveryDeltaT(DeltaT=0.1);
+    Subdir             = ApparentHorizons;
+    BaseName           = CommonHorizon;
+    Surfaces           = AhC;
+    L_mesh             = L+8;   # this is very expensive!
+    Metric             = g;
+    InvMetric          = Invg;
+    ExtrinsicCurvature = K;
+    Christoffel2ndKind = SpatialChristoffel2ndKind;
+    Ricci              = SpatialRicci;
+    RicciScalar        = SpatialRicciScalar;
+    WeylMagnetic       = WeylB;
+    Lapse              = Lapse;
+    dLapseFlattened    = dFlattenedLapse;
+    MapPrefixFromGridToAHFrame = GridToGrid;
+    MapFromAHToMeasurementFrame = GridToGrid::SpatialCoordMap;
+
+    AddRedshift = yes;
+
+    ExtraItems = UnaryOp(Input=SpinFunction;
+                         Output=SpinFunctionSquared;
+			 Op=Square;);
+  );
+
+Observers = Add(ObservationTrigger=EveryDeltaT(DeltaT=0.1;NoTriggerOnZero=no;);
+Observers=ObserveInSubdir
+	    (Subdir=ApparentHorizons;
+	     Observers=IntegralOverStrahlkorperH5Dat
+	     (Input=SpinFunctionSquared;
+	      OutputNames=IntegralOfSpinFunctionSquared;
+	      StrahlkorperDataBoxBaseName = CommonHorizon;
+	      FileName = TestSpin.h5;
+	      VolumeMetric = g;
+	     );
+	    );
+	    );
+
+DataBoxItems = Domain(Items=
+    SpatialCoordMapItems(
+      Prefix      = GridToGrid;
+      InputCoords = <<Grid>>;
+      Map         = CoordToSpatialCoordMap(CoordMap=Identity(Dim=3););
+    ),
+    ),
+Subdomain(Items=
+    AddSpacetimeJacobianAndHessianItems(MapPrefix=GridToGrid;),
+    #Add3Plus1ItemsFromGhPsiKappa(psi=psi;kappa=kappa;OutputPrefix=;),
+    FirstDeriv(Input  = SpatialChristoffel2ndKind;
+                        MapPrefix = GridToGrid;
+                        Output = dSpatialChristoffel2ndKind;),
+    Ricci(Output = SpatialRicci;
+          Gamma  = SpatialChristoffel2ndKind;
+          dGamma = dSpatialChristoffel2ndKind;),
+    Trace(Input             = SpatialRicci;
+          Output            = SpatialRicciScalar;
+          Indices           = 0,1;
+          PositionOfIndices = l,l;
+          InvMetric         = Invg;),
+
+    #For Bnn
+    FirstDeriv(Input=K;
+               MapPrefix=GridToGrid;
+	       Output=dK;
+	       ),
+    CovariantDerivative(Input=K;
+                        CoordDeriv=dK;
+                        Indices=ll;
+                        Christoffel2ndKind
+                        =SpatialChristoffel2ndKind;
+                        Output=CdK;),
+    WeylMagnetic(Output=WeylB;
+                 CdK=CdK;
+                 g=g;
+                 SqrtDetg=SqrtDetg;),
+    # for Redshift
+    FirstDeriv(
+             Input = Lapse;
+	     Output = dLapse;
+	     MapPrefix = GridToGrid;
+	      ),
+    FlattenDeriv(
+		  Input = dLapse;
+		  Output = dFlattenedLapse;
+		  DerivPosition = First;
+              );    
+);

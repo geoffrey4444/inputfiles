@@ -1,0 +1,97 @@
+DistributionPolicy = AllComponentsOnAllProcs;
+MultiVarsComm      = ();
+
+#-------------------------
+# Other Evolution options
+#-------------------------
+Restart    = None;
+StartTime  = __time__;
+
+
+#----------------------------
+# Checkpoint and termination
+#----------------------------
+Terminator          = 
+    (
+     TerminationCriteria = 
+     FinalStep(FinalStep=__FinalStep__),
+     FinalTime(FinalTime =__FinalTime__),
+     WallClock(Minutes=699),
+     IngoingCharFieldOnSlice(Slice=SliceLFF.Sphere0;Eps=1e-10),
+     DataTooBig(TensorInSubdomain=psi;Threshold = 100),
+     OnSignal(Signals=USR1);
+     );
+
+CheckpointController=
+    (
+     Checkpoints=Add(Trigger=
+		     EveryNChunks(NChunks         = 1000;
+				  NoTriggerOnZero = false);
+     );
+    );
+    
+#----------------------------
+# Evolution info
+#----------------------------
+EvolutionInfo = Add(Trigger = WallClockInterval(Seconds=15;);
+                    TriggerOnTermination=true;
+                    Info    = TimeInfo),
+    Add(Trigger = AtSpecifiedSteps(Steps=5,105);
+	TriggerOnTermination=false;
+	Info=#ProfilerResults(Threshold=0.01;),
+	ProfilerResults(Threshold=0; Percentage=no; File=ProfilerSeconds.h5; 
+	ResetProfilerAfterOutput=true);
+    ),
+    Add(Trigger = Never;
+	TriggerOnTermination=true;
+	Info=CpuUsage,
+	TimeInfoFile, FlushCachedData;);
+
+
+#----------------------------
+# Caching of filters 
+#----------------------------
+TensorYlmDataBaseDir = __TensorYlmDataBaseDir__;
+
+#----------------------------
+# Copy
+#----------------------------
+CopyFromSetupToEvolution = 
+    psi(Dim=4;Sym=11;Input=psiAnalytic),
+    kappa(Dim=4;Sym=211;Input=kappaAnalytic),
+    H(Dim=4;Sym=1;Input=H);
+
+#-----------------------
+# Time stepping options
+#-----------------------
+MinimumNumberOfTimeStepsPerChunk=10;
+InitialDeltaTOfEachChunk        =1.0;
+
+
+OdeErrorObservers     = ;
+OdeErrorMeasures      = (Relative(Eps=0));
+OdeIntegrator         = AdaptiveDense
+    (OdeStepper   = DormandPrince5
+     (
+      ExplicitRhsAlgorithm = 
+           MultiVarsRhs
+           (ExplicitRhsAlgorithm0 = Fosh
+      (InterpolatorForMover = ParallelAdaptive
+       (TopologicalInterpolator=Spectral;
+        SendingSubdomainCutoff=1.1;
+        ReceivingProcCutoff   =0.9;);
+       PostBcFilterHack=true;
+       FoshSystem=GeneralizedHarmonic(SpatialDimension   =3);
+       InternalBdryMethod       = MultiPenalty;
+       BjorhusCharSpeedCutoff   = -1e-10;
+       );
+      );
+     );
+     OdeController      = ProportionalIntegral(InitialDt=0.1;
+                                               Tolerance=1.e-8;
+                                               MinimumDt=1.e-4;
+                                               DiagnosticFile=TStepperDiag.dat
+                                               );
+     );
+
+
