@@ -1,0 +1,72 @@
+# -*- specinput -*-
+
+Observers=ObservePhysicalInitialData
+    (
+     Items=Subdomain(Items=
+     TensorNorm(Input=Ham; Output=AbsHam; Metric=None;),
+     TensorNorm(Input=Mom; Output=AbsMom; Metric=None;);
+		     );
+     Observers
+     =DumpTensors(Input=g, K, Lapse, Shift,Ham,Mom; H5=no;
+		  FileNames=Nid_g, Nid_K, Nid_N, Nid_N,Ham,Mom),
+     NormOfTensor(Input=Ham,Mom; Op=L2, VolLp(p=2; SqrtDetg=None); 
+		  Filename=Constraints.dat;
+		   MetricForTensors=None),
+     YlmCoefficientsVsRadius(SphereName=SphereA0;
+			     Input=Ham;
+			     L=0; M=0;
+			     ),
+     YlmCoefficientsVsRadius(SphereName=SphereA0;
+			     Input=AbsHam;
+			     L=0; M=0;
+			     ),
+     YlmCoefficientsVsRadius(SphereName=SphereA0;
+			     Input=AbsMom;
+			     L=0; M=0;
+			     ),
+     YlmCoefficientsVsRadius(SphereName=SphereA1;
+			     Input=Ham;
+			     L=0; M=0;
+			     ),
+     YlmCoefficientsVsRadius(SphereName=SphereA1;
+			     Input=AbsHam;
+			     L=0; M=0;
+			     ),
+     YlmCoefficientsVsRadius(SphereName=SphereA1;
+			     Input=AbsMom;
+			     L=0; M=0;
+			     );
+     
+     );
+
+
+DataBoxItems = 
+    ReadFromFile(File=GlobalItems.input),
+    Domain(Items=
+	   ConstVectorOfDouble(Output=OmegaOrbit; Components=0,0,0),
+	   ConstVectorOfDouble(Output=OmegaInnerShiftBC; 
+			       Components=0,0,0),
+	   ConstDouble(Output=dtExpansionFactor; Value=0),
+	   
+	   ),
+
+# Need dShift, ConformalMetric, TrExtrinsicCurvature, and their derivatives
+    Subdomain(
+      Items =        
+          FirstDeriv(Input=Shift;Output=dShift;),
+          AddMetricItems(Metric=ConformalMetric;Prefix=Conformal;),
+          # uij
+	  Trace(Input=dtTeukolskyh;  Indices=0,1;
+                PositionOfIndices=l,l; InvMetric=InvConformalMetric;
+                Output=TracedtTeukolskyh),
+          BinaryOp(A=ConformalMetric; B=TracedtTeukolskyh; Op=A*B;
+                   Output=g_times_TracedtTeukolskyh),
+          EvaluateFormula(A=dtTeukolskyh;
+                          B=g_times_TracedtTeukolskyh;
+                          Formula=A-B/3; Output=dtConformalMetric),
+          FirstDeriv(Input=dtConformalMetric; Output=ddtConformalMetric;), 
+	  #Set dtTrK to 0
+	  EvaluateScalarFormula(Output=dtTrExtrinsicCurvature; Formula=0;),
+	  FirstDeriv(Input=TrExtrinsicCurvature; 
+		     Output=dTrExtrinsicCurvature;);
+	      );

@@ -1,0 +1,11 @@
+# -*- specinput -*-
+DataBoxItems =
+    Boundary(Items=GlobalSliceIntegrator(Integrator=Spectral);),
+    Subdomain(
+      Items =
+        GlobalIntegrator(Integrator=Spectral),
+        GlobalDifferentiator(
+          GlobalDifferentiator = Standard(TopologicalDifferentiator=Spectral);
+        ),
+      ;
+    );

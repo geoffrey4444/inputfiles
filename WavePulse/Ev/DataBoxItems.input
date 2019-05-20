@@ -1,0 +1,108 @@
+#=============================================================================
+
+EventAndItemAdders=
+    ReadFromFile(File=ApparentHorizonFinders.input),
+    AddGenericFilterItems(SpectralTransformer=Standard;
+			  VarList=psi,kappa;
+                          IndexPositions=ll,lll;
+                          PostBcFilterHack=true;
+                          InternalBcFilterHack=no;
+                          StateChangeFilter=no;
+                          TransformToStandardBasis=no;
+                          MapPrefixGridToInputFrame=GridToInertial;
+                          CylinderWedgeI1Filtering=yes;
+                          RadialFilteringOnTheseSpheres=;
+                          OutputFile = Filters.output;
+                          );
+DataBoxItems =
+    ReadFromFile(File=SetupAndEvolution.input),
+    ReadFromFile(File=SpatialCoordMap.input),
+    Domain(Items =
+           AddGeneralizedHarmonicInfo(MatterSourceName=;);
+           ),
+
+    Subdomain
+    (Items = 
+     # 3+1 from GH
+     Add3Plus1ItemsFromGhPsiKappa(psi=psi;kappa=kappa;OutputPrefix=),
+
+     FirstDeriv(Input=SpatialChristoffel2ndKind;
+                MapPrefix=GridToInertial;
+                Output=dSpatialChristoffel2ndKind;),
+     Ricci(Output=SpatialRicci;
+           Gamma=SpatialChristoffel2ndKind;
+           dGamma=dSpatialChristoffel2ndKind;),
+     Trace(Input=SpatialRicci;Output=SpatialRicciScalar;
+           Indices=0,1;
+           PositionOfIndices=l,l; InvMetric=Invg;),
+
+     #For Bnn
+     FirstDeriv(Input=K;
+                MapPrefix=GridToInertial;
+                Output=dK;),
+     CovariantDerivative(Input=K;
+                         CoordDeriv=dK;
+                         Indices=ll;
+                         Christoffel2ndKind=SpatialChristoffel2ndKind;
+                         Output=CdK;
+                         ),
+     WeylMagnetic(Output=WeylB;
+                  CdK=CdK;
+                  g=g;
+                  SqrtDetg=SqrtDetg;
+                  ),
+
+     # for Redshift
+     FirstDeriv(
+	 Input = Lapse;
+	 Output = dLapse;
+	 MapPrefix = GridToInertial;
+     ),
+     FlattenDeriv(
+	 Input = dLapse;
+	 Output = dFlattenedLapse;
+	 DerivPosition = First;
+     ),
+     FlattenDeriv( # for AhC finder during inspiral
+	 Input = dLapseFromkappa;
+	 Output = dFlattenedLapseFromkappa;
+	 DerivPosition = First;
+     ),
+
+     # Compute spatial deriv of H numerically
+     FirstDeriv(Input=H;Output=DH),
+     # Time deriv of H is zero (for static solution)
+     UnaryOp(Input=H;Output=Zero;Op=MultiplyBy(Value=0)),
+     # Assemble full derivative of H
+     Assemble1stSpacetimeDeriv(Dx=DH;Dt=Zero;
+                               Output=SpacetimeDerivOfH),
+     BinaryOp(A=psi;B=psiAnalytic;Output=psiErr;Op=A-B),
+     BinaryOp(A=kappa;B=kappaAnalytic;Output=kappaErr;Op=A-B),
+     AddGhConstraintItems(psi    = psi;
+                          kappa  = kappa;
+                          H      = H;
+                          OutputPrefix=;
+                          dpsi   = dpsi;
+                          dkappa = dkappa;
+                          dH     = DH),
+     
+     EvaluateScalarFormula(Output=Rsqr;
+                           Coords=GridToInertial::MappedCoords;
+                           Formula=sqr(x0) + sqr(x1) + sqr(x2);),
+     EvaluateScalarFormula(Output=GhGamma0;
+                           A=Rsqr;
+                           Formula = 3.0*exp(-0.5*A/sqr(8)) + .001;),
+     EvaluateScalarFormula(Output=GhGamma1;
+                           Formula = -1.0;),
+     EvaluateScalarFormula(Output=GhGamma2;
+                           A=Rsqr;
+                           Formula = 1.0*exp(-0.5*A/sqr(8)) + .001;),
+     
+    ),
+    Boundary
+    (Items = 
+     ExtractFromParent(Input=GhGamma0,GhGamma1,GhGamma2),
+     ExtractDerivFromParent(Input=DH;Output=dH),
+     ExtractFromParent(Input=H),
+     GeneralizedHarmonicBoundaryItems(FramePrefix=;),
+    );

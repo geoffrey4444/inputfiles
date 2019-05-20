@@ -1,0 +1,82 @@
+DenseStateChangers =
+    AhA(DenseTriggerForApply=AhTrigger);
+
+StateChangerDenseTriggers=
+    AhTrigger(Trigger=Or(DenseTriggers =
+                         EveryDeltaT(DeltaT=__DeltaTObserve__);
+              )
+    );
+
+StateChangerTags =
+    #================================================================
+    #  AhA
+    #================================================================
+    AhA(
+      StateChanger=
+      ParallelStrahlkorperFinder
+      (Output    = AhA;
+       MapPrefix = GridToInertial;
+       CheckpointFile = Cp-StrahlkorperA.dat;
+       Center=__xA__,__yA__,__zA__;
+       InitialGuess    =
+       SurfaceCoefs(File=__AhAFile__;
+                    Time=__time__;  );
+       TopologicalInterpolator=Radial(FallbackInterpolator=CardinalInterpolator);
+       ExtrapolateInTimeToGetInitialGuess = yes;
+       TerminateOnFailure=yes;
+       Adaptive=yes;
+       LmaxFromSphereResolution = yes;
+       MaxItsFailureRefinementIncrement = 1;
+       MaxItsFailureMaxRefinementFactor = 3.0;
+       MaxItsFailureMaxLmesh            = 80;
+       OptsToStrahlkorperFinder=
+       (MinL = __MinLAhA__;
+        InitL = __InitLAhA__;
+        NthetaFormula = floor(max(1.5*L,L+2));
+        AdaptiveLSelectors=
+        Residual(MinValue=__AhMinRes__;MaxValue=__AhMaxRes__;
+                 UseNormalizedResidual=yes;),
+        SurfaceAreaElement(SpatialMetric=g;
+                           TakeSquareRoot = yes;
+                           MinTruncationError = __AhMinTrunc__;
+                           MaxTruncationError = __AhMaxTrunc__;),
+        SurfaceShape(MinTruncationError=__AhMinTrunc__;
+                     MaxTruncationError = __AhMaxTrunc__;);
+
+        StrahlkorperResidual
+        =ConstantExpansion(Expansion=0.0;
+                           InvMetric=Invg;
+                           ExCurv   =K;
+                           Gamma    =SpatialChristoffel2ndKind);
+        Prefix = AhA;
+        StrahlkorperFinderAlgorithm=
+        FastFlow(InvMetric=Invg;
+                 Verbosity=0;
+                 MaxInterpRetries=3;
+        );
+        SpatialMetric=g;
+       )
+      )
+    );
+
+EventAndItemAdders =
+  AddStrahlkorperPhysicalQuantities(
+    ObservationTrigger = EveryDeltaT(DeltaT=__DeltaTObserve__);
+    Subdir             = __ApparentHorizonsDir__;
+    BaseName           = ApparentHorizons;
+    Surfaces           = AhA;
+    L_mesh             = L+8;   # this is very expensive!
+    Metric             = g;
+    InvMetric          = Invg;
+    ExtrinsicCurvature = K;
+    Christoffel2ndKind = SpatialChristoffel2ndKind;
+    Ricci              = SpatialRicci;
+    RicciScalar        = SpatialRicciScalar;
+    WeylMagnetic       = WeylB;
+    Lapse              = Lapse;
+    dLapseFlattened    = dFlattenedLapse;
+    MapPrefixFromGridToAHFrame = <<Identity>>;
+    MapFromAHToMeasurementFrame = <<Identity>>;
+
+    AddRedshift=yes;
+  );

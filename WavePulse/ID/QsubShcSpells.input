@@ -1,0 +1,113 @@
+#!/bin/sh -
+#
+# Submit the job via 'qsub < QsubShc.input'
+# The script will copy input files and the file 'Spells' into a subdirectory
+# Run/, and execute 
+#    DoMultipleRuns -e Spells \
+#                   -c "mpirun -np ${NUMBEROFPROCS} Spells > Spells.out"
+# in that subdirectory.
+# 
+# **YOU** are responsible for setting the following parameters in this file:
+#   walltime (in the PBS -l directive)   --  Allowed run time in hh::mm::ss
+#   nodes    (in the PBS -l directive)   --  Total number of 4-PROCESSOR NODES
+#
+#   Other less-critical customizable variables are below, near the top.
+#
+#------------------------------------------------------------------------
+###
+###  Lines starting with #PBS are directives for batch system
+###
+#                         Set the number of 4-processor nodes
+#PBS -l nodes=1
+#                         Set wallclock time in hh::mm::ss
+#PBS -l walltime=2:00:00
+#                         Charge job to a particular project
+#PBS  -A sxs           
+#                         Specify job name
+#PBS  -N Spells      
+#                         Specify stdout and stderr
+#PBS -o Spells.stdout      
+#PBS -e Spells.stderr      
+
+# This must be LESS THAN OR EQUAL TO 4. Choose less than 4 only if you
+# wish to NOT use all the processors on each compute node.  You are
+# still charged for all processors even if you do not use them.
+PROCESSORSPERNODE=1
+
+############################################################
+############################################################
+############ Hopefully no changes needed below #############
+############ Hopefully no changes needed below #############
+############ Hopefully no changes needed below #############
+############ Hopefully no changes needed below #############
+############################################################
+############################################################
+
+
+
+###
+### For error messages
+###
+die() {
+    echo "ERROR: $1"
+    exit 1
+}
+warn() {
+    echo "WARNING: $1"
+    exit 0
+}
+
+###
+### Get number of processors (needed for the mpirun command)
+###
+NUMBEROFNODES=`cat $PBS_NODEFILE | wc -l`
+NUMBEROFPROCS=`expr $NUMBEROFNODES \* $PROCESSORSPERNODE`
+
+echo "Number of nodes = $NUMBEROFNODES"
+echo "Number of processors = $NUMBEROFPROCS"
+
+
+###
+### Get directories and jobids from system environment variables
+### (only used for diagnostic output) 
+###
+export WORKDIR=$PBS_O_WORKDIR # Directory that the job was submitted from
+export JOBID=$PBS_JOBID       # Job ID, set by the system.
+JOBID=`echo $JOBID | sed 's/\..*//'` # Strip suffix off of JOBID
+
+
+###
+### Print info for diagnostics and job control
+###
+echo "Run from directory $WORKDIR"
+echo -n "Starting time = "; date
+echo "JOBID = $JOBID"
+echo "=== Enabled packages ==="
+using
+
+###
+### Choose location to run ($SCRATCH), and copy files there
+###
+export SCRATCH=$WORKDIR/Run
+
+test -d $SCRATCH || mkdir -p $SCRATCH || die "Cannot mkdir $SCRATCH"
+cp -f $WORKDIR/Spells $SCRATCH    || die "Cannot cp $WORKDIR/Spells to $SCRATCH"
+cp -f $WORKDIR/*.input $SCRATCH || die "Cannot cp $WORKDIR/inputs to $SCRATCH"
+cd $SCRATCH || die "Cannot chdir to scratch directory $SCRATCH"
+
+
+###
+### Run the job
+###
+using 
+echo -n "Begin execution of Spells at "; date
+DoMultipleRuns -e Spells -c "mpirun -np ${NUMBEROFPROCS} Spells > Spells.out 2>&1 "
+./FindAH.sh > FindAH.out 2>&1 
+SPECSTATUS=$?
+echo "mpirun exit status = $SPECSTATUS"
+echo -n "Spells terminated at "; date
+
+###
+### Print finishing diagnositic
+###
+echo -n "Finishing time = "; date

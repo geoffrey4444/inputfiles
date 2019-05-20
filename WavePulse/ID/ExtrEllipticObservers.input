@@ -1,0 +1,2 @@
+Observers = 
+    DumpTensors(H5=no; Input=ConformalMetric,TrExtrinsicCurvature, dtTeukolskyh;);

@@ -1,0 +1,46 @@
+##### Options of nonlinear solver
+-snes_rtol 1e-3
+-snes_monitor
+#-snes_max_it 20
+-snes_max_it 0
+
+##### Options for linear solver 
+-ksp_type fgmres
+-ksp_gmres_restart 50
+#-ksp_xmonitor
+#-ksp_monitor
+-ksp_rtol 1e-4
+#-ksp_max_it 200
+-ksp_max_it 0
+
+
+################
+#### PRECONDITIONING 
+################
+
+###### No preconditioning 
+#-spells_pc_type none
+
+###### Invert A_FD exactly
+#-spells_pc_type lu
+
+###### Perform ILU(k) on A_FD 
+#-spells_pc_type ilu
+#-spells_pc_ilu_levels 2
+
+####### Performs a LU decomp on each (processor)-block
+#-spells_pc_type asm
+#-spells_sub_pc_type lu
+#-spells_pc_asm_overlap 0
+
+
+###### Approximate inversion of A_FD
+# (Note: We set the preconditioner to be bjacobi.  This is the default
+# in parallel anyway.  Using it in serial won't hurt, but will allow
+# us to use the same ilu_levels in serial and parallel.)
+-spells_pc_type ksp 
+-spells_ksp_ksp_max_it 20
+-spells_ksp_ksp_gmres_restart 30
+-spells_ksp_pc_type bjacobi 
+-spells_ksp_sub_pc_factor_levels 2
+# NOTE: replace "ilu" by "factor" for petsc 2.3.1

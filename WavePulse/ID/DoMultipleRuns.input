@@ -1,0 +1,81 @@
+#-*- perl -*-
+
+$Prefix = "Lev";
+
+$BHCenter = 0.0;
+$OmegaOrbitz = 0.0;
+$M = 1;
+$Spinz = 0.0; #was 0.7 * $M;
+$rexc = 1.5;
+$SpellsOmegar = 0.0;
+$Amp= 0.1;
+$Width = 4.0;
+$WaveCenter = 15.0;
+$vr = 0.0;
+$EF = 0.0;
+$v = $OmegaOrbitz*$Sep/2. * 0;
+$BoostGamma = 1/sqrt(1-$v*$v);
+
+$LAh = 12;
+$Ntheta = $LAh+1; 
+$Nphi = 2*$Ntheta;
+$IGAH = 4.0;
+$AHLlist = "6,8,10,12";
+
+$ExtrFrac = 0.8;
+
+$last_dir="";
+for($k=0; $k<=5; ++$k) {
+    $L=5+2*$k;
+    $Nr1=9+4*$k;
+    $Nr2=18+6*$k;
+
+    $dir = $Prefix.$k;
+    &RunInDirectory($dir,
+		    {"Domain.input" => {"__Nr1__" => $Nr1,
+					"__Nr2__" => $Nr2,
+					"__L__" => $L,
+					"__rexc__" => $rexc},
+		     "ExtrDomain.input" => {"__Nr1__" => $Nr1,
+					    "__Nr2__" => $Nr2,
+					    "__L__" => $L,
+					    "__ExtrFrac__" => $ExtrFrac,
+					    "__rexc__" => $rexc},
+		     "FindAh.input" => 
+		     {"__Ntheta__" => $Ntheta,
+		      "__Nphi__" => $Nphi,
+		      "__Acx__" => $BHCenter,
+		      "__Acy__" => 0,
+		      "__Acz__" => 0,
+		      "__IGAH__" => $IGAH,
+		      "__AHLMax__" => $LAh,
+		      "__AHLlist__" => $AHLlist
+		     },
+		     "EllipticItems.input" => {"__LASTDIR__" => $last_dir,
+					       "__BHCenter__" => $BHCenter,
+					       "__M__" => $M,
+					       "__Amp__" => $Amp,
+                                               "__Width__" => $Width,
+                                               "__WaveCenter__" => $WaveCenter,
+					       "__v__" => $v,
+					       "__Spinz__" => $Spinz,
+              			       	       "__OmegaOrbitz__" => $OmegaOrbitz,
+					       "__SpellsOmegar__" => $SpellsOmegar,
+					       "__EF__" => $EF},
+		     "ExtrEllipticItems.input" => {"__LASTDIR__" => "",
+						   "__BHCenter__" => $BHCenter,
+						   "__M__" => $M,
+						   "__Amp__" => $Amp,
+						   "__Width__" => $Width,
+						   "__WaveCenter__" => $WaveCenter,
+						   "__v__" => $v,
+						   "__Spinz__" => $Spinz,
+						   "__OmegaOrbitz__" => $OmegaOrbitz,
+						   "__SpellsOmegar__" => $SpellsOmegar,
+						   "__EF__" => $EF},
+		 }
+	);
+    $last_dir="../".$dir;
+}
+
+

@@ -1,0 +1,10 @@
+SubdomainStructure=
+    SphericalShells3D(BaseName = Sphere;
+                      L = __L__;
+                      r-Axis = (Extents  = __Nr__;
+                                Bounds   = 1.82,6,12 __TwoShells__ ,20,30,50,100,150,200,250,300,350,400;
+                                Maps     = Exp;
+                                IndexMap = ChebyshevGaussLobatto;
+                                Topology = I1;
+                                );
+                      );

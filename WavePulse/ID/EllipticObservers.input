@@ -1,0 +1,69 @@
+Observers = DumpTensors(Input=ConformalFactor,LapseTimesConformalFactor,Shift, 
+      ResidualConformalFactor, ResidualLapseTimesConformalFactor,ResidualShift,
+      DiffConformalFactor, DiffLapseTimesConformalFactor, DiffShift;
+			H5=no;
+			),
+    DumpTensors(Input=ConformalMetric,TrExtrinsicCurvature,dtTeukolskyh;
+    H5=no;),
+            NormOfTensor(Input = ResidualConformalFactor, 
+			         ResidualLapseTimesConformalFactor, 
+			         ResidualShift;
+		         MetricForTensors=ComponentsSeparately; 
+			 Filename=Residual.dat;
+			 Op=L2;),
+            NormOfTensor(Input = DiffConformalFactor,
+			         DiffLapseTimesConformalFactor,
+			         DiffShift; 
+		         MetricForTensors=ComponentsSeparately; 
+			 Filename=Diff.dat;
+			 Op=L2;),
+    NormOfTensor(Input=Diff;MetricForTensors=None;
+		 Filename=TotalDiff.dat;
+		 Op=L2;),
+    NormOfTensor(Input=Diff; EachSubdomainSeparately=yes;
+		 Op=L2;
+		 Filename=DiffSubdomain.dat),
+    # PowerMonitor(Input=ConformalFactor,LapseTimesConformalFactor,Shift;
+    # 		 Subdomains=*; OutputFormat=grace),
+    # PowerMonitor(Input=ConformalMetric,TrExtrinsicCurvature;
+    # 		 Subdomains=*;),
+    ObservePhysicalInitialData(Items=Subdomain(Items=Trace(Input=K;Output=TrK;
+						    Indices=0,1;
+						    PositionOfIndices=l,l;
+						    InvMetric=Invg;),
+				      EvaluateScalarFormula(
+				        Output=LapseTimesConformalFactor;
+					A = Lapse;
+				        B = ConformalFactor;
+				        Formula=A*B;););
+			   Observers=DumpTensors(H5=no; Input=g,Invg,Ricci,
+						 Christoffel2ndKind,
+						 RicciScalar,K,
+						 Lapse,
+						 Ham,Mom,dtg,dtK),
+			   NormOfTensor(Input=Ham,Mom;
+					MetricForTensors=ComponentsSeparately;
+					Filename=Constraint.dat;
+					Op=L2;),
+			       NormOfTensor(Input=dtg,dtK;
+					    MetricForTensors=None;
+					    Filename=TimeDerivs.dat;
+					    Op=L2;),
+			   # PowerMonitor(Input=Ham,Mom;Subdomains=*;),
+			   # AdmIntegrals(Sphere=SphereA2; 
+                           #              ConformalFactor=ConformalFactor;
+			   # 		MonopoleTerms=ConformalFactor,
+			   # 		LapseTimesConformalFactor;
+			   # 		Invg=Invg; dg=dg;
+			   # 		K=K; TrK=TrK; g=g;
+                           #              #CenterOfMassFile=CoM.dat;
+			   # 		);
+			   ),
+            DumpTensors(Input=ConformalFactor,LapseTimesConformalFactor,
+			Shift; H5=no;),
+            SliceIntegral(Input = One; SliceName =
+			  SliceLFF.Sphere*;BaseFileName=AHArea;
+			  VolumeMetric=gActual;),
+	    SliceIntegral(Input = ADMEnergyIntegrandOld;
+			  SliceName=SliceUFF.SphereA2; 
+			  BaseFileName=AdmEnergyOld;VolumeMetric=None;);

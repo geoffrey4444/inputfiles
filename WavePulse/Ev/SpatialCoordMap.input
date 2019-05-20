@@ -1,0 +1,12 @@
+#SpatialCoordMap.input workaround
+
+DataBoxItems=
+	Domain(Items=
+		SpatialCoordMapItems(
+			Map=CoordToSpatialCoordMap
+			(CoordMap=Identity(Dim=3);
+			);
+			Prefix=GridToInertial;
+			InputCoords=<<Grid>>;
+			);
+		);

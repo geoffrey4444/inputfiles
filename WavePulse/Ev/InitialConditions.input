@@ -1,0 +1,65 @@
+EventAndItemAdders=
+    AddGenericFilterItems(SpectralTransformer=Standard;
+			  VarList=psi,kappa;
+                          IndexPositions=ll,lll;
+                          PostBcFilterHack=true;
+                          InternalBcFilterHack=no;
+                          StateChangeFilter=no;
+                          TransformToStandardBasis=no;
+                          MapPrefixGridToInputFrame=GridToInertial;
+                          CylinderWedgeI1Filtering=yes;
+                          RadialFilteringOnTheseSpheres=;
+                          OutputFile = Filters.output;
+                          );
+
+DataBoxItems =
+    ReadFromFile(File=SetupAndEvolution.input),
+    ReadFromFile(File=SpatialCoordMap.input),
+################################################################
+################################################################
+#
+# SET INITIAL DATA
+#
+################################################################
+################################################################
+    ################################################################
+    #Read in the initial data and construct psi,kappa from it
+    ################################################################
+    Domain(Items=
+	   ReadTensorsFromDiskWithMap
+           (Input  = Nid_g(Dim=3;Sym=11;),
+	    Nid_K(Dim=3;Sym=11;),
+	    Nid_Shift(Dim=3;Sym=1;Input=Nid_N),                   
+	    Nid_N(Dim=3;Sym=;);
+            Time   = 0; 
+            DeltaT = 1.e-8;
+            Dir    = __DIR__;
+            Interpolator=Simple(TopologicalInterpolator=Spectral;);
+            #Extrapolator = SphereTaylor(Order=4);
+            #MapPrefixGridToInertial = GridToInertial;
+            #MapPrefixSrcGridToInertial = GridToInertial;
+	   );
+    ),
+
+    Subdomain
+    (Items =
+     ################################################################
+     # Turn g, K , N, Shift into psi, kappa
+     ################################################################
+     AddGhVarsFromInitialData
+     (
+      Nid_g=Nid_g; Nid_K=Nid_K; Nid_Lapse=Nid_N; Nid_Shift=Nid_Shift;
+      MapPrefixGridToInertial=GridToInertial; #only one frame
+      MapPrefixFixedLapseShiftToInertial=GridToInertial; #only one frame
+      ModifyKappaToSatisfy3Con=yes;
+      OutputPrefix = Unfiltered;
+      GaugeWeightFunction = None;
+     ),
+     
+     ################################################################
+     # Filtering of initial data
+     ################################################################
+     SpectralFilter(Input  = Unfilteredpsi,Unfilteredkappa,UnfilteredH;
+                    Output = Filteredpsi,Filteredkappa,FilteredH;
+                    FilterLabel = KillTop);
+    );

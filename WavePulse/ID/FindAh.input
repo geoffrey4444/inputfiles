@@ -1,0 +1,115 @@
+# -*- specinput -*-
+DataBoxItems =
+    ReadFromFile(File=GlobalItems.input;),
+    ReadFromFile(File=SpatialCoordMap.input;),
+    Subdomain(Items=
+	      EvaluateFormula(A=Nid_g;Output=g;Formula=A;),
+	      EvaluateFormula(A=Nid_K;Output=K;Formula=A;),
+	      AddMetricItems(Metric=g;Prefix=;),
+              EvaluateScalarFormula(A=Nid_N;Output=Lapse;Formula=A;),
+              UnaryOp(Input=Detg; Output=SqrtDetg; Op=Sqrt;),
+     #For Bnn
+     FirstDeriv(Input=K;
+                MapPrefix=GridToInertial;
+                Output=dK;),
+     CovariantDerivative(Input=K;
+                         CoordDeriv=dK;
+                         Indices=ll;
+                         Christoffel2ndKind=Christoffel2ndKind;
+                         Output=CdK;
+                         ),
+     WeylMagnetic(Output=WeylB;
+                  CdK=CdK;
+                  g=g;
+                  SqrtDetg=SqrtDetg;
+                  ),
+
+     # for Redshift
+     FirstDeriv(
+	 Input = Lapse;
+	 Output = dLapse;
+	 MapPrefix = GridToInertial;
+     ),
+     FlattenDeriv(
+	 Input = dLapse;
+	 Output = dFlattenedLapse;
+	 DerivPosition = First;
+     ),
+     FlattenDeriv( # for AhC finder during inspiral
+	 Input = dLapseFromkappa;
+	 Output = dFlattenedLapseFromkappa;
+	 DerivPosition = First;
+     ),
+	      ),
+    Domain(Items=
+	      # Hole A
+#	      AddMetricItems(Input=g;Prefix=;),
+	      ParallelStrahlkorperFinder(# Ntheta=__Ntheta__;#18;
+					 # Nphi=__Nphi__;#36;
+					 MapPrefix=;
+					 Center=__Acx__,__Acy__,__Acz__;
+                                         TopologicalInterpolator=Spectral;
+                                         CheckpointFile=Cp-AhA.txt;
+					 Output=AhA;
+					 # WhichSubdomains=SphereA*;
+					 # WhichTensors=g,Invg,K,
+					 # Christoffel2ndKind;
+					 # AlwaysStartFromInitialGuess=yes;
+					 DebugInfo=yes;
+					 InitialGuess=Sphere(Radius=__IGAH__;
+#							     Center=0,0,0;
+							    );
+	 OptsToStrahlkorperFinder=(L=__AHLlist__;
+                                   Lmesh=__AHLMax__;
+				  StrahlkorperResidual=
+				  ConstantExpansion(InvMetric=Invg;
+						    ExCurv=K;
+						    Expansion=0;
+						    Gamma=Christoffel2ndKind;
+						    );
+				  Prefix=AhA;
+				  StrahlkorperFinderAlgorithm=
+				   FastFlow(InvMetric=Invg;
+					    RetryIfCannotInterpolate=yes;
+					    alpha=1;
+					    beta=0.3;	
+					    Verbosity=2;
+#					    MaxIts=__FastFlowMaxIts__;
+					    );
+				   SpatialMetric=g;
+
+				  );
+
+	   );
+    );
+
+Observers = 
+    # PLACE OBSERVERS HERE
+    ObserveInSubdir(Subdir=HorizonA;Observers=
+    SurfaceInfo(Input=AhA; CrossSections=yes; 2DSurfaceOutputL=__AHLMax__;
+		2DSurfaceOutputSubdomain=qwerty;
+		OutputCoefficients=yes;
+		),
+    );
+
+EventAndItemAdders=
+AddStrahlkorperPhysicalQuantities(
+    ObservationTrigger = EveryDeltaT(DeltaT=0.1);
+    Subdir             = ApparentHorizons;
+    BaseName           = ApparentHorizons;
+    Surfaces           = AhA;
+    L_mesh             = L+8;   # this is very expensive!
+    Metric             = g;
+    InvMetric          = Invg;
+    ExtrinsicCurvature = K;
+    Christoffel2ndKind = Christoffel2ndKind;
+    Ricci              = Ricci;
+    RicciScalar        = RicciScalar;
+    WeylMagnetic       = WeylB;
+    Lapse              = Lapse;
+    dLapseFlattened    = dFlattenedLapse;
+    MapPrefixFromGridToAHFrame = GridToInertial;
+    MapFromAHToMeasurementFrame = GridToInertial::SpatialCoordMap;
+
+    AddRedshift=yes;
+  );

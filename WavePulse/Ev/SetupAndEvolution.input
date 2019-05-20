@@ -1,0 +1,28 @@
+DataBoxItems =
+    Subdomain
+    (Items = 
+     GlobalDifferentiator
+     (GlobalDifferentiator=
+      Standard(TopologicalDifferentiator
+	       =Spectral(BasisFunctions=
+			 (ChebyshevGaussLobatto=ChebyshevGaussLobattoMatrix);
+	       )
+      );
+     ),
+     GlobalIntegrator
+     (Integrator
+      =Spectral(BasisFunctions=
+                (ChebyshevGaussLobatto=ChebyshevGaussLobattoMatrix);
+      )
+     ),
+
+     
+     AnalyticEinsteinSolution
+     (Output   = AnalGr;
+      Solution = KerrSchild(Spin=0.2,0.3,0.4);
+     ),
+     AnalyticEinstein::SpacetimeMetric(Input=AnalGr;
+				       Output=psiAnalytic),
+     AnalyticEinstein::Kappa(Input =AnalGr;
+			     Output=kappaAnalytic)
+    );

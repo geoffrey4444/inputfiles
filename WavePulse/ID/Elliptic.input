@@ -1,0 +1,43 @@
+# -*- specinput -*-
+
+Observers = ReadFromFile(File=EllipticObservers.input);
+
+VarsStructure = ConformalFactor, LapseTimesConformalFactor, Shift(Symm=1;);
+
+VolumeTerms = ExtendedConformalThinSandwich();
+
+FirstColumnInOutputFiles=0;
+BCs=SliceLFF.SphereA0(Dirichlet(Var=ConformalFactor;
+                      TakeFromTensor=KSBGConformalFactor;),
+                      Dirichlet(Var=LapseTimesConformalFactor;
+                      TakeFromTensor=KSBGLapseTimesConformalFactor;),
+                      Dirichlet(Var=Shift;TakeFromTensor=KSBGShift;)
+		      ),
+    SliceUFF.SphereA2(Dirichlet(Var=ConformalFactor;
+                      TakeFromTensor=KSBGConformalFactor;),
+                      Dirichlet(Var=LapseTimesConformalFactor;
+                      TakeFromTensor=KSBGLapseTimesConformalFactor;),
+                      Dirichlet(Var=Shift;TakeFromTensor=KSBGShift;)
+		      );
+
+Preconditioner  = AllAtOnce(
+ VolumeTerms=MinusFlatLaplacian(
+             Vars=ConformalFactor,LapseTimesConformalFactor,Shift);
+     BCs = *(Identity(Vars=ConformalFactor,LapseTimesConformalFactor,Shift;));
+			    );
+
+ResidualOptions=(DomainInterpolator=
+		 ParallelAdaptive(TopologicalInterpolator=CardinalInterpolator;
+                                  SendingSubdomainCutoff=1.1;
+				  ReceivingProcCutoff=0.9;););
+
+
+PetscResolution = Sphere*(Scale=1,1,1; Offset=0,-2,-4);
+#    Cyl*(Scale=1,1,1; Offset=0,-4,0),
+#    Perim*(Scale=1,1,1; Offset=0,0,0);
+
+CoreOptions = (SnesMonitorFile = snes.dat; KspMonitorFile = ksp.dat;);
+
+#FirstColumnInOutputFiles = __OmegaOrbitz__;
+
+ObserveEvenIfNotConverged = yes;

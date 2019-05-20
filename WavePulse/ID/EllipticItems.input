@@ -1,0 +1,159 @@
+# -*- specinput -*-
+#__C__
+Items =
+Domain(Items=
+       ConstVectorOfDouble(Output=OmegaOrbit; Components=0,0,__OmegaOrbitz__),
+       ConstVectorOfDouble(Output=OmegaInnerShiftBC; 
+			   Components=0,0,__SpellsOmegar__),
+       ConstDouble(Output=dtExpansionFactor; Value=__EF__),
+
+       ConstDouble(Output=Time;Value=0)
+       ),
+
+    ReadFromFile(File=GlobalItems.input),
+    Subdomain(Items=              
+    #************* Kerr-Schild background **************
+     AnalyticEinsteinSolution(
+      Solution=TransformedEinsteinSolution(
+	                    OriginalSolution=KerrSchild(Spin=0,0,__Spinz__;
+							Velocity=0,__v__,0;
+							Mass=__M__;
+							Center=__BHCenter__,0,0;
+							);
+			     Map=GalileanBoost(Velocity=0,-1*0,0;));
+			      Output=KSBG;),
+
+	  AnalyticEinstein::g(Input=KSBG; Output=KSBGMetric;),
+	  AddMetricItems(Metric=KSBGMetric; Prefix=KSBG;),
+	  AnalyticEinstein::dtg(Input=KSBG; Output=KSBGdtg;),
+	  TensorNorm(Input=KSBGdtg;Output=KSBGdtgNorm;
+		     Metric=KSBGMetric;),
+	  AnalyticEinstein::K(Input=KSBG;Output=KSBGK),
+	  Trace(Input=KSBGK;Output=KSBGTrK;Indices=0,1;
+		PositionOfIndices=l,l;InvMetric=InvKSBGMetric;),
+	  FirstDeriv(Input=KSBGK;Output=KSBGdK;),
+	  AnalyticEinstein::N(Input=KSBG;Output=KSBGLapse;),
+	  FirstDeriv(Input=KSBGLapse;Output=KSBGdLapse;),
+	  SecondDeriv(Input=KSBGLapse;Output=KSBGddLapse;),
+	  AnalyticEinstein::Shift(Input=KSBG;Output=KSBGShift;),
+          EvaluateScalarFormula(Formula=1;
+                                Output=KSBGConformalFactor;),
+          EvaluateScalarFormula(A=KSBGConformalFactor;B=KSBGLapse;
+                                Output=KSBGLapseTimesConformalFactor;
+                                Formula=A*B;),
+
+	  FirstDeriv(Input=KSBGShift;Output=KSBGdShift;),
+	  AdmKdotEqn(Output=KSBGKdot;InvMetric=InvKSBGMetric;
+		     Christoffel2ndKind=KSBGChristoffel2ndKind;
+		     Ricci=KSBGRicci; ExCurv=KSBGK; dExCurv=KSBGdK;
+		     Lapse=KSBGLapse; dLapse=KSBGdLapse; 
+		     ddLapse=KSBGddLapse;
+		     Shift=KSBGShift; dShift=KSBGdShift;),
+	  RaiseOrLower(Input=KSBGdtg;Output=KSBGdtgHiHi;
+		       InPosition=ll; OutPosition=uu; 
+		       InvMetric=InvKSBGMetric; Metric=KSBGMetric;),
+	  TensorProduct(A=KSBGK;B=KSBGdtgHiHi;Output=KdtgHiHiA;),
+	  Trace(Input=KdtgHiHiA;Output=KdtgHiA;Indices=0,2;
+		PositionOfIndices=l,u;),
+	  Trace(Input=KdtgHiA;Output=KSBGdtTrK;Indices=0,1;
+		PositionOfIndices=l,u;),
+
+    #***************** Teukolsky wave ****************************
+	  TeukolskyWave(Amp=__Amp__;
+                        GetTimeFromDataBox=no;                       
+			M=2;                                               
+			Parity=even;                                        
+			Direction=ingoing; 
+			r0=__WaveCenter__;              
+			Width=__Width__;                     
+                        Origin = 0,0,0;
+			AddFlatSpace=no;              
+			MetricOutput=Teukolskyh;           
+			dtMetricOutput=dtTeukolskyh;
+                 ),
+
+          # CONFORMAL METRIC
+	  EvaluateFormula(A=KSBGMetric;B=Teukolskyh;
+			  Output=ConformalMetric;
+			  Formula=A+B;),
+
+	  AddMetricItems(Metric=ConformalMetric; Prefix=Conformal;),
+
+	  #uij
+	  Trace(Input=dtTeukolskyh;  Indices=0,1;                   
+                PositionOfIndices=l,l; InvMetric=InvConformalMetric; 
+                Output=TracedtTeukolskyh),                  
+          BinaryOp(A=ConformalMetric; B=TracedtTeukolskyh; Op=A*B;     
+                   Output=g_times_TracedtTeukolskyh),         
+          EvaluateFormula(A=dtTeukolskyh;              
+                          B=g_times_TracedtTeukolskyh;     
+                          Formula=A-B/3; Output=dtConformalMetric),
+	  FirstDeriv(Input=dtConformalMetric; Output=ddtConformalMetric;),
+
+	  #TrK
+	  EvaluateFormula(A=KSBGTrK;
+			  Output=TrExtrinsicCurvature;Formula=A;),
+          FirstDeriv(Input=TrExtrinsicCurvature;
+                     Output=dTrExtrinsicCurvature;),
+
+	  #Set dtTrK to 0
+	  EvaluateScalarFormula(Output=dtTrExtrinsicCurvature; Formula=0;),
+
+    # ********************* Conformal Metric Related ******************
+    #Actual metric = physical metric using whatever conformal factor
+    #spells finds.
+    EvaluateScalarFormula(A=ConformalFactor;Output=Psi4;Formula=A*A*A*A;),
+    BinaryOp(Output=gActual; A=ConformalMetric; B=Psi4; Op=A*B;),
+    BinaryOp(Output=InvgActual; A=InvConformalMetric; B=Psi4; Op=A/B;),
+
+    #Dump residual to file
+    TensorNorm(Output=ShiftNorm; Input=Shift; Metric=gActual;),
+    TensorNorm(Output=ResShiftNorm; Input=ResidualShift; Metric=gActual;),
+
+    #For physical observers
+    EvaluateScalarFormula(Output=One;Formula=1;),
+    EvaluateScalarFormula(Output=Radsq;Formula=x0*x0+x1*x1+x2*x2;),
+    EvaluateScalarFormula(Output=1o4piRadsq; A=Radsq; Formula=1/(4*Pi*A);),
+    FirstDeriv(Input=gActual;Output=dgActual),
+
+    EllipticInitialGuess(ImportDir=__LASTDIR__; 
+			 SubdomainItems=
+			 #Black hole A
+
+	 #The initial guess
+	 EvaluateScalarFormula(Output=IG-ConformalFactor;
+			       Formula=1),
+	 EvaluateFormula(Output=IG-Shift; A=KSBGShift;
+			 Formula=A),
+	 EvaluateFormula(Output=IG-LapseTimesConformalFactor;
+			 A=KSBGLapse;
+			 Formula=A);
+			 );			 
+),
+
+Boundary(Items= ExtractFromParent(Input=ConformalMetric,gActual,
+				  DetConformalMetric,InvConformalMetric,
+				  ConformalChristoffel2ndKind,
+			          ConformalRicciScalar, TrExtrinsicCurvature,
+				  dtTrExtrinsicCurvature,
+                                  IG-ConformalFactor,
+				  KSBGLapse,
+				  KSBGShift,
+                                  KSBGConformalFactor,
+                                  KSBGLapseTimesConformalFactor,
+				  IG-LapseTimesConformalFactor,IG-Shift,      
+				  dtConformalMetric,InvgActual,1o4piRadsq,One;
+                ),
+
+		AdmQuantitiesIntegrands(Metric=gActual; InvMetric=InvgActual;
+					dMetric=dgActual; 
+					E-Output=ADMEnergyIntegrandOld; 
+					SurfaceNormal=FromSlice;),
+
+                ExtractDerivFromParent(Input=dConformalMetric, 
+				       dConformalChristoffel2ndKind, 
+				       dTrExtrinsicCurvature, 
+				       ddtTrExtrinsicCurvature, 
+				       ddtConformalMetric, dgActual;
+                ),
+	 );

@@ -1,0 +1,8 @@
+DataBoxItems=
+    Domain(Items =
+	   SpatialCoordMapItems
+	   (Map         = Scaling(SpatialDim=3;a=1.0;dta=0.0;dt2a=0.0;);
+	    Prefix      = GridToInertial;
+	    InputCoords = <<Grid>>;
+	    );
+	   );
