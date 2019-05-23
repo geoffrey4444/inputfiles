@@ -1,0 +1,50 @@
+# Path to list of points to interpolate onto
+$InterpPath = "/home/specuser/docker/Codes/spectre_stuff/InterpolateData/spec/spectre_start_domain/PointsList.txt";
+
+# Which levels (i.e. resolutions) to run?
+
+$MinLev = 1;
+$MaxLev = 1;
+
+$FinalTime = 0;
+$FinalStep = 0;
+
+# if non-zero, then run with only two shell.  This is quick (for benchmarking),
+# and appears to be convergent for the inner shell when running to Tfinal=2M.
+# However, the outer shell is not convergent, and this is likely
+# unstable, because the outer boundary is much too close.  If zero,
+# then run with 12 shells.
+$JustTwoShells = 0;
+
+# Get the preferences set in the user's ~/.SpEC file
+# This is used here only to cache Ylm-filters, which are
+# very expensive to compute. 
+my %opts = RunGetDotSpecOptions();
+my $TensorYlmDataBaseDir = $opts{"TensorYlmDataBaseDir"};
+
+
+for($k=$MinLev; $k<=$MaxLev; ++$k) { # loop over levels
+
+  $DIR = "Lev".$k;
+  CreateSubmitScript(
+    Cores   => 1,
+    Jobname => $DIR,
+  );
+
+  RunInDirectory($DIR,
+  {
+    "Domain.input" => {
+      "__Nr__"   => 9+4*$k,
+      "__L__"    => 5+2*$k,
+      "__TwoShells__" => ($JustTwoShells ? "; #": "")
+    },
+    "Evolution.input" => {
+      "__time__"      => "0.0",
+      "__FinalTime__" => $FinalTime,
+      "__FinalStep__" => $FinalStep,
+      "__TensorYlmDataBaseDir__" => $TensorYlmDataBaseDir,
+    },
+    "InterpolateData.input" => {"__InterpPath__" => $InterpPath}
+  }
+  );
+}

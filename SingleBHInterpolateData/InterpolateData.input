@@ -1,0 +1,13 @@
+# -*- specinput -*-
+Observers =
+  ObserveInSubdir
+  (Subdir=InterpolatedData;
+   Observers = InterpolateToSpecifiedPoints(TopologicalInterpolator=Spectral;
+                                            Input=psi, kappa, H,
+					          GradH;
+                                            PointsFile=__InterpPath__;
+                                            DumpAllDataIntoSingleFile=yes;
+                                            FileNameBase=Interp;
+                                            TerminateOnPointsOutside=yes;
+					    );
+  );

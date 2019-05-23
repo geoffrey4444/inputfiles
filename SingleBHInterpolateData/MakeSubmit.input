@@ -1,0 +1,15 @@
+# This input file is used to write Submit.sh.
+# If you edit this file by hand, run `MakeSubmit.py update`.
+[main]
+Account = 
+Script = EvolutionWrapper -v -a="__EmailAddresses__" -f="__TerminationInfoFile__"
+Queue = 
+ForceCores = True
+CoresPerNode = 4
+Cores = 1
+Jobname = Lev1
+AllowUnusedCores = False
+Hours = 120.0
+Preempt = 0
+ForceCoresPerNode = False
+

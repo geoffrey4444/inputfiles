@@ -1,0 +1,19 @@
+DataBoxItems =
+    ReadFromFile(File=SetupAndEvolution.input),
+    ReadFromFile(File=SpatialCoordMap.input),
+    Subdomain(Items=
+              AnalyticEinstein::DerivSpacetimeMetric(Input=AnalGr;
+                                                     Output=dpsi),
+              # Need generalized harmonic function and its derivative
+              # H_{alpha} = - psi^{mu nu} Gamma_{alpha mu nu} 
+              Christoffel1stKind(Input=dpsi;Output=Christoffel1stKind),
+              Determinant(Input=psiAnalytic;Output=Detpsi),
+              InvertMatrix(Input=psiAnalytic;Output=Invpsi;
+                           DetInput=Detpsi),
+              Trace(Input=Christoffel1stKind;InvMetric=Invpsi;
+                    Output=TrChristoffel1stKind;
+                    PositionOfIndices=l,l;Indices=1,2),
+              UnaryOp(Input=TrChristoffel1stKind;
+                      Output=H;Op=MultiplyBy(Value=-1)),
+
+              );
