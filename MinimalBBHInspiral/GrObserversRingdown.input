@@ -1,0 +1,192 @@
+Observers=
+    #---------------------------------
+    # MinOverMaxEigenvalue
+    #---------------------------------
+    Add(ObservationTrigger = EveryDeltaT(DeltaT = __DeltaTObserve__;
+                                         Tstart = __TstartObserve__;);
+        Observers          =
+        ObserveInSubdir
+        (Subdir=Eigenvalues;
+         Observers =
+         NormOfTensor(Input    = MinOverMaxEvg;
+                      Op       = Min;
+                      Filename = MinOverMaxEvg.dat),
+         NormOfTensor(Input    = MinOverMaxEvg;
+                      Op       = Min;
+                      Filename = MinOverMaxEvgBySubdomain.dat;
+                      EachSubdomainSeparately=yes),
+         ),
+        ),
+
+    #---------------------------------
+    # Char Speeds
+    #---------------------------------
+    Add(ObservationTrigger =
+        EveryDeltaT(DeltaT = __DeltaTObserve__;
+                    Tstart = __TstartObserve__;);
+        Observers          =
+        ObserveInSubdir
+        (Subdir=CharSpeeds;
+         Observers=
+         FoshCharSpeedNorms(Norms  = Min,Max;
+                            Slices = SphericalSlices(Center=0,0,0);
+                            GlobalMinMaxFilePrefix=CharSpeedsGlobalMinMax;
+                            ),
+         FoshCharSpeedNorms(Norms     = Min,Max;
+                            Slices    =
+                            SphericalSlices(Center = 0,0,0;
+                                            Normal = UFF);
+                            SliceType = External;
+                            ),
+#%%%     DumpFoshCharSpeeds(Input=U-;H5=no;),
+#%%%     DumpTensorsOnSlices(Input=InertialCoordsOnSlice;
+#%%%                         SliceName=*),
+         ),
+        ),
+
+    #-----------------------------------------
+    # Horizon quantities.
+    #-----------------------------------------
+    Add(ObservationTrigger = Or(DenseTriggers=
+                                EveryChunk,
+                                EveryNSteps(NSteps=1;NoTriggerAfterStep=10),
+        );
+        Observers          =
+        ObserveInSubdir
+        (Subdir=ApparentHorizons;
+         Observers=
+         SurfaceInfo(Input=AhC; CrossSections=no; OutputCoefficients=yes;
+                     FileNamesContainL =no;
+                     SpatialCoordMap=DistortedToInertial::SpatialCoordMap;
+                     2DSurfaceOutputL=25;
+                     2DSurfaceOutputSubdomain=CoordsS2;
+                     ),
+         SurfaceInfo(Input=AhCInertial; CrossSections=no;
+                     FileNamesContainL =no;
+                     OutputCoefficients=yes;
+                     2DSurfaceOutputL=25;
+                     2DSurfaceOutputSubdomain=CoordsS2;
+                     ),
+         ),
+        ),
+    # AMR related diagnostics
+    Add(ObservationTrigger =
+        EveryChunk;
+        Observers =
+        PowerDiagnosticsH5(GridDiagnostics=GridDiagPowerpsi,
+                           GridDiagPowerkappa;
+                           PowerMonitors=Powerpsi,Powerkappa;
+                           Subdomains=*;),
+        ObserveInSubdir
+        (Subdir=ConstraintNorms;
+         Observers =
+         ObserveMvDoublesInSubdomains(
+           Input=NormOf2Con,NormOf3Con;
+           FilenamePrefix=ProjectedCon;
+           );
+        );
+    ),
+
+    # Constraint Norms outside horizons
+    Add(ObservationTrigger = EveryDeltaT(DeltaT = __DeltaTObserve__;
+                                         Tstart = __TstartObserve__;);
+        Observers          =
+        ObserveInSubdir
+        (Subdir=ConstraintNorms;
+         Observers =
+         NormOfTensor(Input    = GhCeExt,1ConExt,2ConExt,3ConExt,GhCeDenomExt;
+                      MetricForTensors=None;
+                      Op       = VolLp(p=2;SqrtDetg=SqrtDetg);
+                      Filename = GhCeExt.dat),
+         NormOfTensor(Input=GhCeExt; Filename=GhCeExt_Norms.dat;
+                      Op=VolLp(p=2; SqrtDetg=SqrtDetg),L2, Linf;),
+         NormOfTensor(Input=GhCeExt; Op=L2;
+                      Filename=GhCeExt_L2.dat; EachSubdomainSeparately=yes);
+         ),
+        ),
+
+    # Dumps of norms
+    Add(ObservationTrigger = EveryDeltaT(DeltaT = __DeltaTObserve__;
+                                         Tstart = __TstartObserve__;);
+        Observers          =
+        ObserveInSubdir
+        (Subdir=ConstraintNorms;
+         Observers=
+         NormOfTensor(Input    = GhCe,1Con,2Con,3Con,GhCeDenom;
+                      MetricForTensors=None;
+                      Op       = VolLp(p=2;SqrtDetg=SqrtDetg);
+                      Filename = GhCe.dat),
+         NormOfTensor(Input=GhCe; Filename=GhCe_Norms.dat;
+                      Op=VolLp(p=2; SqrtDetg=SqrtDetg),L2, Linf;),
+         NormOfTensor(Input=NormalizedGhCe; Filename=NormalizedGhCe_Norms.dat;
+                      Op=VolLp(p=2; SqrtDetg=SqrtDetg),L2, Linf;),
+
+         NormOfTensor(Input=GhCe; Op=VolLp(p=2;SqrtDetg=SqrtDetg);
+                      Filename=GhCe_VolL2.dat; EachSubdomainSeparately=yes),
+         NormOfTensor(Input=GhCe; Op=IntegralAbs(p=2;SqrtDetg=SqrtDetg);
+                      Filename=GhCe_IntegralAbs2.dat;
+                      EachSubdomainSeparately=yes),
+         NormOfTensor(Input=GhCe; Op=L2;
+                      Filename=GhCe_L2.dat; EachSubdomainSeparately=yes),
+         NormOfTensor(Input=GhCe; Op=Linf;
+                      Filename=GhCe_Linf.dat; EachSubdomainSeparately=yes),
+         NormOfTensor(Input=NormalizedGhCe; Op=Linf;
+                      Filename=NormalizedGhCe_Linf.dat; EachSubdomainSeparately=yes),
+
+         NormOfTensor(Input=1Con; Op=VolLp(p=2;SqrtDetg=SqrtDetg);
+                      Filename=1Con_VolL2.dat; EachSubdomainSeparately=yes;
+                      MetricForTensors=None),
+         NormOfTensor(Input=1Con; Op=IntegralAbs(p=2;SqrtDetg=SqrtDetg);
+                      Filename=1Con_IntegralAbs2.dat;
+                      EachSubdomainSeparately=yes;
+                      MetricForTensors=None),
+         NormOfTensor(Input=1Con; Op=L2;
+                      Filename=1Con_L2.dat; EachSubdomainSeparately=yes;
+                      MetricForTensors=None),
+         NormOfTensor(Input=1Con; Op=Linf;
+                      Filename=1Con_Linf.dat; EachSubdomainSeparately=yes;
+                      MetricForTensors=None),
+
+
+         NormOfTensor(Input=2Con; Op=VolLp(p=2;SqrtDetg=SqrtDetg);
+                      Filename=2Con_VolL2.dat; EachSubdomainSeparately=yes;
+                      MetricForTensors=None;),
+         NormOfTensor(Input=2Con; Op=IntegralAbs(p=2;SqrtDetg=SqrtDetg);
+                      Filename=2Con_IntegralAbs2.dat;
+                      EachSubdomainSeparately=yes;
+                      MetricForTensors=None;),
+         NormOfTensor(Input=2Con; Op=L2;
+                      Filename=2Con_L2.dat; EachSubdomainSeparately=yes;
+                      MetricForTensors=None;),
+         NormOfTensor(Input=2Con; Op=Linf;
+                      Filename=2Con_Linf.dat; EachSubdomainSeparately=yes;
+                      MetricForTensors=None;),
+
+
+         NormOfTensor(Input=3Con; Op=VolLp(p=2;SqrtDetg=SqrtDetg);
+                      Filename=3Con_VolL2.dat; EachSubdomainSeparately=yes;
+                      MetricForTensors=None),
+         NormOfTensor(Input=3Con; Op=IntegralAbs(p=2;SqrtDetg=SqrtDetg);
+                      Filename=3Con_IntegralAbs2.dat;
+                      EachSubdomainSeparately=yes;
+                      MetricForTensors=None),
+         NormOfTensor(Input=3Con; Op=L2;
+                      Filename=3Con_L2.dat; EachSubdomainSeparately=yes;
+                      MetricForTensors=None),
+         NormOfTensor(Input=3Con; Op=Linf;
+                      Filename=3Con_Linf.dat; EachSubdomainSeparately=yes;
+                      MetricForTensors=None);
+         );
+        ),
+    Add(ObservationTrigger=EveryDeltaT(DeltaT=__DeltaTObserve__);
+        Observers=ObserveGridPointsVsRadius
+           (CenterA=0,0,0;
+            CenterB=0,0,0;
+            File=GridPointsVsRadius;
+            Rmax=__Rmax__;
+        );
+    ),
+
+
+
+

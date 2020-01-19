@@ -1,0 +1,13 @@
+EventAndItemAdders =
+    AddWaveExtraction
+    (ObservationsPerOrbit = __WaveObservationsPerOrbit__;
+     OutputPsi3 = no;
+     OutputPsi2 = no;
+     OutputPsi1 = no;
+     OutputPsi0 = no;
+     Rmin     = __WaveExtractionRmin__;
+     Rmax     = __WaveExtractionRmax__;
+     NumRadii = 24;
+     InitialAdmEnergy = __InitialAdmEnergy__;
+     H5DatDir = __WaveDir__;
+    );

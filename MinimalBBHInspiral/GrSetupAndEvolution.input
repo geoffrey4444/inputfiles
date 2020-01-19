@@ -1,0 +1,115 @@
+# For setup and evolution.
+#Adder for filtering
+EventAndItemAdders=
+    AddGhFilterItems(TransformToStandardBasis  = no;
+                     SpectralTransformer       = Standard;
+                     StateChangerDependsOn     = Rotation,Scaling,Translation,
+                                                 Skew,CutX,ShapeA,ShapeB,SizeA,
+                                                 SizeB,ControlChunks,
+                                                 ControlTimeStep;
+                     # Ask for radial filtering on those spherical shells
+                     # that have been split by Amr. Note that this filtering
+                     # most likely will target junk traveling through the
+                     # grid as this is when Amr will (temporarily)
+                     # split shells.  As the junk is through, Amr will re-join
+                     # those and the filtering it no longer active.
+                     RadialFilteringOnTheseSpheres = Sphere*.?;
+                     MapPrefixGridToInputFrame = GridToInertial;
+    );
+DataBoxItems =
+    Domain
+    (Items=
+     AddSpectralFilterController(
+       SpectralFilterController = ExpCheb(
+         FilterLabelDefault=ExpCheb;
+         SubdomainFilterLabelForS2=KillTop;
+         BoundaryFilterLabelDefault=BdryExpCheb;
+         BoundaryFilterLabelForS2=BdryKillTop;
+         ProjectVolumeChangesOntoSlices = yes;
+         IncludeSlicesInDiag = yes;
+         Verbose=no;
+         LimitsOnExpChebHalfPower=
+         Sphere*
+         (MinAllowedValueForI1        = 28;
+          # don't usually filter on I1
+          RequiredMaxValueForI1       = <<None>>;
+          # S2=<<None>> means KillTop only
+          MinAllowedValueForS2        = 28;
+          RequiredMaxValueForS2       = <<None>>;),
+         Cylinder*
+         (MinAllowedValueForI1        = 28;
+          RequiredMaxValueForI1       = 32;
+          MinAllowedValueForS1        = 20;
+          RequiredMaxValueForS1       = 24;),
+         FilledCylinder*
+         (MinAllowedValueForI1        = 28;
+          RequiredMaxValueForI1       = 32;
+          MinAllowedValueForB2        = 20;
+          RequiredMaxValueForB2       = 24;
+          # we usually don't filter B2Radial
+          MinAllowedValueForB2Radial  = 28;
+          RequiredMaxValueForB2Radial = <<None>>;),
+#        Use this for julggle balls / wedges
+#        Wedge*
+#        (MinAllowedValueForI1        = 28;
+#         RequiredMaxValueForI1       = 32;
+#        ),
+#        use this for filled spheres
+#        FilledSphere*
+#        (MinAllowedValueForB3        = 28;
+#         RequiredMaxValueForB3       = <<None>>;
+#         MinAllowedValueForB3Radial  = 28;
+#         RequiredMaxValueForB3Radial = <<None>>;),
+#         use this if filtering on slices
+#        Slice*Wedge*
+#        (MinAllowedValueForI1        = 28;
+#         RequiredMaxValueForI1       = 32;
+#        ),
+         Slice*.Cylinder*
+         (MinAllowedValueForI1        = 28;
+          RequiredMaxValueForI1       = 32;
+          MinAllowedValueForS1        = 20;
+          RequiredMaxValueForS1       = 24;),
+         SliceFUF.FilledCylinder*
+         (MinAllowedValueForI1        = 28;
+          RequiredMaxValueForI1       = <<None>>;
+          MinAllowedValueForS1        = 20;
+          RequiredMaxValueForS1       = <<None>>;),
+         Slice?FF.FilledCylinder*
+         (MinAllowedValueForB2        = 20;
+          RequiredMaxValueForB2       = 24;
+          MinAllowedValueForB2Radial  = 28;
+          RequiredMaxValueForB2Radial = <<None>>;),
+         Slice*Sphere*
+         (MinAllowedValueForS2        = 28;
+          RequiredMaxValueForS2       = <<None>>;);
+         );
+       );
+     ),
+    Subdomain
+    (Items =
+     # differentiator
+     GlobalDifferentiator
+     (GlobalDifferentiator=
+      MatrixMultiply(MultiDim_by_BasisFunction=yes;
+              TopologicalDifferentiator
+               =Spectral(SetBasisFunctionsFromTimingInfo=yes;
+                         # BasisFunctions= (ChebyshevGaussLobatto=ChebyshevGaussLobattoMatrix);
+                         )
+               );
+      ),
+     GlobalIntegrator
+     (Integrator
+      =Spectral(BasisFunctions=
+                (ChebyshevGaussLobatto=ChebyshevGaussLobattoMatrix);
+                );
+      ),
+
+     # Set up zero quantities here
+     EvaluateScalarFormula(Output=ZeroScalar;Formula=0.;),
+     EvaluateScalarFormula(Output=OneScalar;Formula=1.;),
+     EvaluateVectorFormula(Output=Zero3Vector;V[0]=0;V[1]=0;V[2]=0;),
+     EvaluateVectorFormula(Output=Zero4Vector;V[0]=0;V[1]=0;V[2]=0;V[3]=0;),
+     ); # Subdomain
+
+

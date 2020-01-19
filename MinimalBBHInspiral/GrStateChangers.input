@@ -1,0 +1,91 @@
+# Keys no longer used
+#  '__TdampingShapeA__ __CharSpeedsThreshold__
+# __ShellDropComovingCharSpeedThreshold__ __TdampingAhB__
+# __CharSpeedsMinDampTime__ __ShellDropThreshold__ __CharSpeedsDecreaseFactor__
+# __TdampingAhA__ __CharSpeedsMaxDampTimeA__ __CharSpeedsMaxDampTimeB__
+# __CharSpeedsTaverageFac__ __TdampingShapeB__'
+StateChangers =
+    Rotation(EventTriggerForApply  =EveryChunk;
+             DenseTriggerForUpdate=ChunkFraction;
+             UpdateDependsOn=AhA,AhB;),
+    Scaling(EventTriggerForApply=EveryChunk;DenseTriggerForUpdate=ChunkFraction;
+            UpdateDependsOn=AhA,AhB;);
+
+StateChangerEventTriggers =
+    EveryChunk(Trigger=EveryNChunks(NChunks=1;NoTriggerOnZero=yes)),
+    Every3Steps(Trigger=EveryNSteps(NSteps = 3; NoTriggerOnZero = yes;)),
+    Every3StepsIncludingFirst(Trigger=EveryNSteps(NSteps = 3;
+                                                  NoTriggerOnZero = no;));
+StateChangerDenseTriggers =
+    ChunkFraction(Trigger=
+                  StepAfterChunkFraction(Frac=__MeasureFractionOfChunk__;
+                                         TstartIsStartOfChunk=yes;
+                                         NoTriggerNearChunkEps=0.001;)),
+    EveryStep(Trigger=EveryNSteps(NSteps = 1; NoTriggerOnZero = no;));
+
+StateChangerTags=
+    Scaling(
+      StateChanger=
+      ControlNthDeriv
+      (
+       FunctionVsTime      = ExpansionFactor;
+       MeasureControlParam = ScaleTwoAH(
+         CenterA=__xA__,__yA__,__zA__;
+         CenterB=__xB__,__yB__,__zB__;
+         SurfaceInfoA=AhA;
+         SurfaceIdA  =;
+         SurfaceInfoB=AhB;
+         SurfaceIdB  =;
+         ExpansionFactor=ExpansionFactor;
+       );
+
+       Controller = PNd(AdjustForTimeOffset = yes;);
+
+       Averager=Exp(Taverage        = Fraction(Value=__TaverageFac__;);
+                    CheckpointFile  = Cp-ExpansionFactor.txt;
+                    UseAverageQ     = false;
+       );
+
+       TimescaleTuner = Simple(MaxThreshold   = __Threshold__;
+                               CrossingTimeFac= 0.5;
+                               IncreaseFactor = __IncreaseFactor__;
+                               DecreaseFactor = __DecreaseFactor__;
+                               MinDampTime = __MinDampTime__;
+                               MaxDampTime = __MaxDampTime__;
+                               InitialState   = Specified
+                               (Tdamping=__Tdamping__);
+                               CheckpointFile =
+                               Cp-TdampExpansionFactor.txt;);
+      )),
+    Rotation(
+      StateChanger=
+      ControlNthDeriv
+      (
+       FunctionVsTime      = RotationAngle;
+       MeasureControlParam =
+       RotationTwoAH(
+         SurfaceInfoA=AhA;
+         SurfaceIdA  =;
+         SurfaceInfoB=AhB;
+         SurfaceIdB  =;
+         TargetAngle =; #default empty, i.e., zero
+       );
+
+       Controller = PNd(AdjustForTimeOffset = yes;);
+
+       Averager=Exp(Taverage        = Fraction(Value=__TaverageFac__;);
+                    CheckpointFile  = Cp-RotationAngle.txt;
+                    UseAverageQ     = false;
+       );
+
+       TimescaleTuner = Simple(MaxThreshold      = __Threshold__;
+                               CrossingTimeFac= 0.5;
+                               IncreaseFactor = __IncreaseFactor__;
+                               DecreaseFactor = __DecreaseFactor__;
+                               MinDampTime = __MinDampTime__;
+                               MaxDampTime = __MaxDampTime__;
+                               InitialState   = Specified
+                               (Tdamping=__Tdamping__);
+                               CheckpointFile =
+                               Cp-TdampRotationAngle.txt;);
+      ));

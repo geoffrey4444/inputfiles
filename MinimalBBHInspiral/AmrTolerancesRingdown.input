@@ -1,0 +1,12 @@
+# This file is intentionally empty. Before Ringdown, AmrDriver.input and
+# ApparentHorizonFinders.input get their tolerances from AmrTolerances.input.
+# When Ringdown starts, all input files with names ending in Ringdown are
+# renamed by removing Ringdown. For example, AmrDriverRingdown.input is renamed
+# to AmrDriver.input. However, these new input files have tolerances defined
+# within them and AmrTolerances.input is no longer used. By having an empty
+# AmrTolerancesRingdown.input, this will get renamed to AmrTolerances.input in
+# Ringdown, thus avoiding any possible confusion.
+#
+# This can be replaced in the future, if AmrDriverRingdown.input and
+# ApparentHorizonFindersRingdown.input are updated to read from
+# AmrTolerancesRingdown.input

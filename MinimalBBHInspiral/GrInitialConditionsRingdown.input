@@ -1,0 +1,37 @@
+DataBoxItems =
+    ReadFromFile(File=SpatialCoordMap.input),
+    Domain
+    (Items =
+     ################################################################
+     # 3+1 quantities in inertial frame
+     ################################################################
+     ReadTensorsFromDiskWithMap
+     (Dir                        = __DIRDATA__;
+      DomainDir                  = __DIR__;
+      DomainFile                 = GrDomain.input;
+      SpatialCoordMapDir         = __DIR__;
+      Time                       = __time__;
+      MapPrefixGridToInertial    = GridToInertial;
+      MapPrefixSrcGridToInertial = GridToInertial;
+      DeltaT                     = __DeltaT__;
+      H5FilePrefix               = Cp-VarsGr;
+      Input                      = UnFilteredpsi(Dim=4;Sym=11;Input=psi),
+                                   UnFilteredkappa(Dim=4;Sym=211;Input=kappa);
+      Interpolator=ParallelAdaptive(TopologicalInterpolator
+                                    =CardinalInterpolator;);
+      # the following may speed up initial amr, but will
+      # result in O(truncation error) changes in the data
+      # ReslutionChangerForUseWhenDownsizing=Spectral;
+      );
+     );
+
+# Make sure the initial data is filtered.
+# Otherwise, there is a small but measurable jump in
+# the data from step zero to step 1, which can be measured,
+# for instance, in the residual of the AH finder.
+
+EventAndItemAdders=
+    AddGhFilterItems(SpectralTransformer=Standard;
+		     TransformToStandardBasis  = no;
+                     MapPrefixGridToInputFrame = GridToInertial;
+                     );

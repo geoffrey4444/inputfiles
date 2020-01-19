@@ -1,0 +1,12 @@
+# All modifications to AMR tolerances should be done only in this file.
+# Other input files should read this to get the tolerances.
+#
+# A semicolon at the end is necessary
+AhMinRes=__AhMinRes__;
+AhMaxRes=__AhMaxRes__;
+AhMinTrunc=__AhMinTrunc__;
+AhMaxTrunc=__AhMaxTrunc__;
+TruncationErrorMax=__TruncationErrorMax__;
+TruncationErrorMaxA=__TruncationErrorMaxA__;
+TruncationErrorMaxB=__TruncationErrorMaxB__;
+ProjectedConstraintsMax=__ProjectedConstraintsMax__;

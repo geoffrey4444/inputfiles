@@ -1,0 +1,54 @@
+# TouchingJuggleBallBBH for unequal mass
+ReadFromFiles = RefinementOptionHistory.input;
+SubdomainStructure=
+    TouchingCutSphereWedgesBBH
+    (
+     Level= __Lev__;
+     DomainFilename=Dnew.input;
+
+     CenterA=__xA__,__yA__,__zA__;
+     CenterB=__xB__,__yB__,__zB__;
+     CutSphereGridPlaneCoordX=<<DEFAULT>>;
+     AdjustSmallerCutRadiusLimit=true;
+     MinimumAllowedSmallerCutRadius=<<DEFAULT>>;
+
+     UseSmallRotations = false;
+     RotateSpheresOntoXAxis = false;
+
+     SphereA=(RMin = __rExcA__;
+              RMax = __rMaxA__; # 0.5*fabs(__xB__);
+              RelativeDeltaR=1.1*__RelativeDeltaR__;  # prevent early shell-drops
+              L=__LA__;
+              RadialExtents=7+k;
+              RadialMap = Exp;
+             );
+     SphereB=(RMin = __rExcB__;
+              RMax = __rMaxB__; # 0.5*fabs(__xA__);
+              RelativeDeltaR=1.1*__RelativeDeltaR__;  # prevent early shell-drops
+              L=__LB__;
+              RadialExtents=7+k;
+              RadialMap = Exp;
+             );
+
+     SphereC=(RMin=__RminSphereCFactor__*fabs(__xB__);
+              RMax=__Rmax__;NShells=__NumSphereCs__;
+              L=12+k;
+              RadialExtents=8+k;
+             );
+
+     FilledCylinderDefaults  = ( ThetaExtent = 8+k;
+                           PhiExtent = 13+2*k;
+                           RadialExtents = 7+k;
+                           RadialSplitFactor=2;
+                          );
+     CylinderDefaults  = ( ThetaExtents = 8+k;
+                           PhiExtent = 13+2*k;
+                           RadialExtents = 7+k;
+                           RadialSplitFactor=2;
+                          );
+     FilledCylinderMA::ThetaSplitFactor = 2;
+     FilledCylinderMB::ThetaSplitFactor = 2;
+     );
+
+BoundaryInfo = ( WarningLevel = 0;);
+FileBaseName = GrDomain;

@@ -1,0 +1,81 @@
+DenseStateChangers = AhC(DenseTriggerForApply=AhTrigger);
+
+StateChangerDenseTriggers=
+    AhTrigger(Trigger=
+              Or(DenseTriggers =
+                 EveryChunk(NoTriggerOnZero=no),
+                 EveryNSteps(NSteps=1;NoTriggerAfterStep=10),
+                 StepAfterChunkFraction(Frac=__MeasureFractionOfChunk__;
+                                        TstartIsStartOfChunk =yes;
+                                        NoTriggerNearChunkEps = 0.05;);
+                 )
+              );
+
+StateChangerTags =
+    AhC(
+        StateChanger=
+        ParallelStrahlkorperFinder
+           (Output                  = AhC;
+            MapPrefix               = GridToDistorted;
+            CheckpointFile          = Cp-StrahlkorperC.dat;
+            Center                  = 0,0,0;
+            TopologicalInterpolator = Radial(FallbackInterpolator=CardinalInterpolator);
+            TerminateOnFailure      = true;
+            TerminateOnFailureDuringInitialAmrIteration = false;
+            InitialGuess            = Sphere(Radius=__AhGuessRadius__;);
+            Adaptive                = yes;
+            LmaxFromSphereResolution= yes;
+            LmaxFromSphereResolutionLimit = __MaxLAh__;
+            MaxItsFailureRefinementFactor    = 1.25;
+            MaxItsFailureMaxRefinementFactor = 3.0;
+            OptsToStrahlkorperFinder         =
+            (Prefix             = AhC;
+             SpatialMetric      = Distortedg;
+             NthetaFormula      = floor(max(1.5*L,L+2));
+             MinL               = 8;
+             InitL              = __InitLAh__;
+             AdaptiveLSelectors =
+             Residual(MinValue             =__AhMinTrunc__;
+                      MaxValue             =__AhMaxTrunc__;
+                      UseNormalizedResidual=yes;
+                      ),
+             SurfaceShape(MinTruncationError = __AhMinTrunc__;
+                          MaxTruncationError = __AhMaxTrunc__;);
+             StrahlkorperResidual
+             =ConstantExpansion(Expansion=0.0;
+                                InvMetric=DistortedInvg;
+                                ExCurv   =DistortedK;
+                                Gamma    =DistortedSpatialChristoffel2ndKind);
+             StrahlkorperFinderAlgorithm=
+             FastFlow(InvMetric=DistortedInvg;
+                      Verbosity=0;
+                      DivergenceTol=5;
+                      TruncationTol=1.e-5;
+                      MaxInterpRetries=3;
+                      );
+             )
+            );
+        );
+
+#=============================================================================
+EventAndItemAdders =
+  AddStrahlkorperPhysicalQuantities(
+    ObservationTrigger = EveryChunk;
+    Subdir             = ApparentHorizons;
+    BaseName           = CommonHorizon;
+    Surfaces           = AhC;
+    L_mesh             = L+8;   # this is very expensive!
+    Metric             = Distortedg;
+    InvMetric          = DistortedInvg;
+    ExtrinsicCurvature = DistortedK;
+    Christoffel2ndKind = DistortedSpatialChristoffel2ndKind;
+    Ricci              = DistortedSpatialRicci;
+    RicciScalar        = DistortedSpatialRicciScalar;
+    WeylMagnetic       = DistortedWeylB;
+    Lapse              = Lapse;
+    dLapseFlattened    = dDistortedFlattenedLapse;
+    MapPrefixFromGridToAHFrame = GridToDistorted;
+    MapFromAHToMeasurementFrame = DistortedToInertial::SpatialCoordMap;
+
+    AddRedshift = yes;
+  );

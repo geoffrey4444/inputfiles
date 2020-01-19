@@ -1,0 +1,75 @@
+# Keys no longer used
+# '__xB__ __yB__ __ExpFacTimeScale__ __xA__ __zA__  __FixedSpeed__
+# __LControlA__ __MapDir__ __zB__ __StartTime__ __yA__ __LControlB__'
+DataBoxItems=
+Domain(Items =
+    FunctionVsTime(Output= RotationAngle;
+                    FunctionVsTime=NthTimeDeriv
+                    (DerivOrder=3;
+                     ComponentLabels=Specified(Labels=Phi);
+                     InitialData=Values(f      = 0.0;
+                                        df     = __Omega__;
+                                        Tstart = 0);
+                     FileBaseName=FuncRotationAngle);
+                    ),
+    FunctionVsTime(Output= ExpansionFactor;
+                    FunctionVsTime=NthTimeDeriv
+                    (DerivOrder     =3;
+                     ComponentLabels=Specified(Labels=a);
+                     InitialData=Values(f      = 1.0;
+                                        df     = __aDot__;
+                                        Tstart = 0);
+                     FileBaseName=FuncExpansionFactor);
+                    ),
+    FunctionVsTime(Output= Unity;
+                    FunctionVsTime=Formula
+                    (f      = 1.0;
+                     dtf     = 0.0;
+                     dt2f = 0.0;);),
+    FunctionVsTime(Output= Zero;
+                    FunctionVsTime=Formula
+                    (f      = 0.0;
+                     dtf     = 0.0;
+                     dt2f = 0.0;);),
+AddSpatialCoordMapHolder(
+SpatialCoordMaps=
+    CubicScale(Map=CubicScale(
+        R = __Rmax__;
+        a0 = 1.0;
+        Dim = 3;
+        ExpansionFactor = ExpansionFactor;
+    );),
+    Yaw(Map=RotationAndScaling(
+        ExpansionFactor=Unity;
+        UseLog=no;
+        RotationAngle=RotationAngle;
+    );),
+    Identity(Map=RotationAndScaling(
+        ExpansionFactor=Unity;
+        UseLog=no;
+        RotationAngle=Zero;
+    );)),
+SpatialCoordMapItems
+     (Map=ComposeSpatialCoordMapsFromHolder(SpatialDim=3;
+               DisableCaching=false;
+               RestrictCachingToTheseSubdomains =*;
+               Map=CubicScale >> Yaw;);
+      Prefix      = GridToInertial;
+      InputCoords = <<Grid>>;
+     ),
+SpatialCoordMapItems
+     (Map=ComposeSpatialCoordMapsFromHolder(SpatialDim=3;
+               DisableCaching=false;
+               RestrictCachingToTheseSubdomains =*;
+               Map=CubicScale >> Yaw;);
+      Prefix      = DistortedToInertial;
+      InputCoords = GridToDistorted::MappedCoords;
+     ),
+SpatialCoordMapItems
+     (Map=ComposeSpatialCoordMapsFromHolder(SpatialDim=3;
+               DisableCaching=false;
+               RestrictCachingToTheseSubdomains =*;
+               Map=Identity;);
+      Prefix      = GridToDistorted;
+      InputCoords = <<Grid>>;
+     ));

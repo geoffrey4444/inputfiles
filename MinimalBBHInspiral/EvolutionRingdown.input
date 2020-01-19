@@ -1,0 +1,144 @@
+
+SystemNames        = Gr;
+MultiVarsTypes     = GVDM;
+DistributionPolicy = AllComponentsOnAllProcs;
+MultiVarsComm      = ();
+ 
+#-------------------------
+# Other Evolution options
+#-------------------------
+Restart    = None;
+StartTime  = __time__;
+
+#----------------------------
+# Copy initial data
+#----------------------------
+GrCopyFromSetupToEvolution =
+    psi(Dim=4;Sym=11;Input=Filteredpsi),
+    kappa(Dim=4;Sym=211;Input=Filteredkappa);
+
+#----------------------------
+# Database for optimization
+#----------------------------
+TensorYlmDataBaseDir     = __TensorYlmDataBaseDir__;
+
+#----------------------------
+# Checkpoint and termination
+#----------------------------
+GrTerminator =(
+     TerminationCriteria =
+     Add(EventTrigger = EveryNChunks(NChunks=1);
+         TerminationCriteria = FileExists(FileName=stop.txt;
+                                          RemoveFileAtTermination=true;);
+     ),
+     Add(EventTrigger = EveryNChunks(NChunks=10);
+	 TerminationCriteria=
+	 WhenMemoryIsNotBalanced(),
+	 WhenFoshRhsIsNotBalanced();
+     ),
+     FinalTime(FinalTime =__FinalTime__),
+     WallClock(Hours     = _hours_),
+     IngoingCharFieldOnSphericalBdry(Center=0,0,0;
+                                     TimeThresholdForError = __time__+10;
+     ),
+     DataTooBig(TensorInSubdomain=psi;Threshold = 100),
+     OnSignal(Signals=USR1),
+     # SIGTERM is sent to preemptee jobs when a preemptor job is submitted
+     OnSignal(
+       Signals = TERM;
+       Name = Preemption;
+       AutoRestartAfterTermination = true;
+     ),
+);
+
+CheckpointController=
+    (
+     Checkpoints                       = ;
+     FilenamePrefixForForcedCheckpoint = Checkpoints/;
+    );
+
+#----------------------------
+# Evolution info
+#----------------------------
+EvolutionInfo =
+    # We add a random offset to the instances of FlushCachedData
+    # so that, in case many runs are started simultaneously,
+    # the amount of concurrent writing onto the disk by
+    # independent jobs in minimal.
+    Add(Trigger              = WallClockInterval(Hours=1.0;
+                                                 AddRandomOffset=yes);
+        TriggerOnTermination = true;
+        Info                 = FlushCachedData;
+       ),
+    Add(Trigger              = WallClockInterval(Hours=0.25;);
+        TriggerOnTermination = true;
+        Info                 = TimeInfo,
+	                       TimeInfoFile,
+                               MemoryInfoFile,
+                               CachedH5InfoFile;
+    ),
+    Add(Trigger              = Never;
+        TriggerOnTermination = true;
+        Info                 = CpuUsage,ProfilerResults,
+                               MemoryTracker(File = MemProfiler.h5;);
+    );
+
+#-----------------------
+# Amr options
+#-----------------------
+
+GrOptions = ( 
+  Impl = Volume(AmrDriver =ReadFromFile(File=AmrDriver.input);
+                AmrDriverMaxInitIterations = 40; );
+);
+
+#-----------------------
+# Time stepping options
+#-----------------------
+MinimumNumberOfTimeStepsPerChunk=3;
+InitialDeltaTOfEachChunk = __InitialDeltaTChunk__;
+
+OdeErrorMeasures=(Relative(DiagnosticFile=OdeErrorRelative.dat));
+OdeErrorObservers = ;
+OdeIntegrator     = AdaptiveDense(
+  OdeStepper = DormandPrince5(
+    ExplicitRhsAlgorithm = MultiVarsRhs(
+      ExplicitRhsAlgorithm0 = Fosh(
+        InterpolatorForMover = ParallelInterpAndDeriv(
+          GlobalDifferentiator=Standard(
+            TopologicalDifferentiator=Spectral(
+              SetBasisFunctionsFromTimingInfo=yes;
+            )
+          );
+          TopologicalInterpForSubdomains = Spectral;
+          TopologicalInterpForSlices     =
+          SelectFastestInterpolator(
+           TopologicalInterplators=
+           Spectral(SetBasisFunctionsFromTimingInfo=yes;),
+           CardinalInterpolator
+           );
+        );
+        BoundaryInfoMover::UseNonBlockingMpi = true;
+        PostBcFilterHack     = false;
+        FoshSystem           = DualFrame(
+          FramePrefix     = Inertial;
+          EvolutionSystem = GeneralizedHarmonic(SpatialDimension = 3;
+                                                RhsMethod=Pointwise);
+        );
+        InternalBdryMethod = MultiPenalty;
+        BjorhusCharSpeedCutoff = -1e-10;
+        InternalBcFilterHack = true;
+        MappedDerivPrefix = Inertial;
+        MapPrefixGridToEvolutionFrame  = GridToInertial;
+        BdryConditionsFilePrefix = Gr;
+      ); # Fosh
+    ); # MultiVarsRhs
+  ); # DormandPrince5
+  OdeController = ProportionalIntegral(
+    Tolerance     =1.e-8;
+    InitialDt     =__InitialDt__;
+    DiagnosticFile=TStepperDiag.dat;
+    MinimumDt     =__MinTStep__;
+    TimeThresholdForError = __time__+10;
+  );
+); # AdaptiveDense

@@ -1,0 +1,85 @@
+AmrDriver =
+    ChangeSpectralGrid(
+
+          Level = __Lev__;
+          # We find that triggering frequenly from the beginning
+          # of the run is important to resolve effects of the
+          # early stages of the run, where the black holes
+          # go through quasinormal ringing induced by junk
+          # radiation in addition to the initial gauge dynamics.
+          __TriggerEveryNChunks__
+
+          # The Amr driver will terminate if any of the resolutions
+          # are to be increased beyond this limit.  This is for
+          # a sanity type check -- rater than getting some mysterious
+          # out-of-memory error, Amr will terminate in a REQUIRE.
+          InsaneResolution    = __InsaneResolution__;
+
+          SpectralGridDiagnostics   = GridDiagPowerkappa,GridDiagPowerpsi;
+
+         #TruncationErrorMax=ReadFromAmrTolerancesInputFile(TruncationErrorMax);
+
+          # The truncation error is computed using
+          # log10(trunc) = ( coef_A log10(value_A)
+          #                + coef_B log10(value_B)
+          #                + coef_C log10(value_C)
+          #                ) / ( coef_A + coef_B + coef_C)
+          # where the various coefficients are defined by RadialProfile.
+          # As shown below, coef_C = 1 everwhere, while , near CenterA,
+          # coef_A = 1, coef_B is small, giving a truncation error of
+          # (log10(value_A) + log10(value_C))/2 near centerA.
+          # Setting value_A = value_C/1.e4 gives a truncation error of
+          # value_C/1.e2 near centerA. The same applies to value_B.
+          TruncationErrorMax =
+             Add(Center=0,0,0;
+                 Value = ReadFromAmrTolerancesInputFile(TruncationErrorMax);
+                 RadialProfile = Constant(Value=1);
+                ),
+             Add(Center=__xA__,__yA__,__zA__;
+                 Value = ReadFromAmrTolerancesInputFile(TruncationErrorMaxA);
+                 RadialProfile = Gaussian(Width = fabs(__xB__);
+                                          Center=0;);
+                ),
+             Add(Center=__xB__,__yB__,__zB__;
+                 Value = ReadFromAmrTolerancesInputFile(TruncationErrorMaxB);
+                 RadialProfile = Gaussian(Width = fabs(__xA__);
+                                          Center=0;);
+                );
+
+          TruncationErrorBufferWidth        = 0;
+          NCallsBeforeChangingNPointsAgain  = 2;
+          NCallsBeforeSplittingOrJoiningSubdomain    = 20;
+          MinDeltaTBeforeChangingSubdomainAgain = __AmrMinTimeBeforeChangingSdAgain__;
+
+          MapPrefixFromGridToEvolutionFrame = GridToInertial;
+
+	  # Extra truncation error conditions on
+	  #  NormOf2Con and NormOf3Con.
+          TopologicalDiagnostics::ErrorNorm  = NormOf2Con,NormOf3Con;
+          TopologicalDiagnostics::Tolerance  = 
+                   ReadFromAmrTolerancesInputFile(ProjectedConstraintsMax);
+          TruncationErrorAdjustmentLimit     = -1;
+          TruncationErrorAdjustmentAlgorithm = QuasiLocal;
+
+          Verbose = yes;
+          ForceDropPileUpModes = yes;
+
+          UsePredictorScheme               = yes;
+          MaximumAllowedPileUpModes        = 3;
+          SplitNeighborsWithExcisionSd     = yes;
+          ExcisionSubdomainSplitThresholdL = __ExcisionSplitL__;
+          SplitLargeSubdomains             = yes;
+          EnableAdaptiveFiltering          = yes;
+          SplitSizeLowerLimitForI1         = 30;
+          SplitSizeLowerLimitForS2         = 40;
+          MaxSplitLevel                    = 4;
+          SplitSizeLowerLimit              = 30000;
+
+          RestrictionsOnExtents =
+          SphereA*(MinL=L+5;MinExtent0=5+k; SurfaceInfo=AhA;),
+          SphereB*(MinL=L+5;MinExtent0=5+k; SurfaceInfo=AhB;),
+          SphereC*(MinL=k+10;MinExtent0=7+k;
+                   DoNotChangeExtent0BeforeTime = __BeginAdjustSphereCExtents__;
+                   DoNotChangeLBeforeTime = __BeginAdjustSphereCExtents__;
+                  );
+    );

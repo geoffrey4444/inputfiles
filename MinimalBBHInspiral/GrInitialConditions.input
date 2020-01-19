@@ -1,0 +1,42 @@
+EventAndItemAdders = ReadFromFile(File=GrSetupAndEvolution.input);
+DataBoxItems=
+ReadFromFile(File=SpatialCoordMap.input),
+
+    Domain(Items=
+      ReadTensorsFromDiskWithMap(
+        Input=
+          Nid_g(Dim=3;Sym=11;),
+          Nid_K(Dim=3;Sym=11;),
+          Nid_Shift(Dim=3;Sym=1;),
+          Nid_N(Dim=3;Sym=;);
+        Time   = 0;
+        DeltaT = 1.e-8;
+        Dir    = __DIR__;
+        DomainFile = GrDomain.input;
+        Interpolator=ParallelAdaptive(TopologicalInterpolator
+                                      =CardinalInterpolator;);
+        MapPrefixGridToInertial = GridToInertial;
+        MapPrefixSrcGridToInertial = GridToInertial;
+        DomainHasNoHistoryFile = true;
+        # the following may speed up initial amr, but will
+        # result in O(truncation error) changes in the data
+        # ReslutionChangerForUseWhenDownsizing=Spectral;
+      );
+
+    ),
+
+    Subdomain(Items=
+     AddGhVarsFromInitialData(
+       Nid_g=Nid_g; Nid_K=Nid_K; Nid_Lapse=Nid_N; Nid_Shift=Nid_Shift;
+       MapPrefixGridToInertial=GridToInertial;
+       MapPrefixFixedLapseShiftToInertial = DistortedToInertial;
+       ModifyKappaToSatisfy3Con = yes;
+       OutputPrefix = UnFiltered;
+       GaugeWeightFunction = Gaussian(
+         CenterA = __xA__,__yA__,__zA__;
+         CenterB = __xB__,__yB__,__zB__;
+         PowerA  = __ID_SpatialGaussianPower__;
+         PowerB  = __ID_SpatialGaussianPower__;
+       );
+     ),
+     );

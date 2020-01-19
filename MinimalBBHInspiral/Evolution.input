@@ -1,0 +1,210 @@
+# Unused Keys
+# __TimeRolloffTimeScale__ __RelativeDeltaR__ __TimeRolloffStartTime__'
+SystemNames        = Gr;
+MultiVarsTypes     = GVDM;
+DistributionPolicy = AllComponentsOnAllProcs;
+MultiVarsComm      = ();
+
+#-------------------------
+# Other Evolution options
+#-------------------------
+Restart    = None;
+StartTime  = __time__;
+
+#----------------------------
+# Copy initial data
+#----------------------------
+GrCopyFromSetupToEvolution = psi(Dim=4;Sym=11; Input=Filteredpsi),
+                           kappa(Dim=4;Sym=211; Input=Filteredkappa),
+                           InitGridHi(Dim=3;Sym=1;Input=UnFilteredInitGridHi),
+                           InitHhatt(Dim=4;Sym=;Input=UnFilteredInitHhatt);
+
+TensorYlmDataBaseDir = __TensorYlmDataBaseDir__;
+#----------------------------
+# Checkpoint and termination
+#----------------------------
+GrTerminator = (
+  AddLookForRequestedTermination = no;  # Added by CommonHorizon
+  TerminationCriteria =
+    CommonHorizon(
+      Verbose = no;
+      TriggerName = SmoothCoordSepDouble;
+      StopSearchBelowValue = 0;
+      SurfaceInfo = AhC;
+      MinimumNumSuccesses = 8;
+      TerminateBelowThisSurfaceL = __TerminateBelowThisL__;
+      ErrorQuantities = NormalizedGhCe;
+      ErrorThresholds = 1; # try quitting soon
+      CheckpointFile = Cp-TerminateCommonHorizon.txt;
+      Terminator = (
+        # TerminationCriteria that can trigger ringdown
+        AddLookForRequestedTermination = yes;
+        TerminationCriteria =
+          IngoingCharFieldOnSphericalBdry(
+            Center=__xA__,__yA__,__zA__;
+            TimeThresholdForError = 10;
+          ),
+          IngoingCharFieldOnSphericalBdry(
+            Center=__xB__,__yB__,__zB__;
+            TimeThresholdForError = 10;
+          ),
+          Add(
+            EventTrigger = EveryNChunks(NChunks=1);
+            TerminationCriteria =
+              DataTooBig(TensorInSubdomain=GhCeExt,NormalizedGhCe;
+                         Threshold=10,1; Operator=And),
+            ;
+          ),
+          DataTooBig(TensorInSubdomain=psi;Threshold=100),
+        ;
+      );
+     ),
+     # Check for non-balanced rhs evaluation at the AMR trigger frequency.
+     # Doing this more often can cause repeated re-starts, as there may
+     # be too much fluctuation in the rhs expense measurements. Also,
+     # the self-timing adaptive mover may need time to settle on an
+     # optimal configuration.
+     Add(EventTrigger = EveryNChunks(NChunks=100);
+         TerminationCriteria = WhenFoshRhsIsNotBalanced;
+        ),
+     # Check for 'stop.txt', constraints once every 1 chunk.
+     Add(EventTrigger = EveryNChunks(NChunks=1);
+         TerminationCriteria = FileExists(FileName=stop.txt;
+                                          RemoveFileAtTermination=true;),
+                               WhenMemoryIsNotBalanced,
+         ;
+        ),
+     # This WallClock will be modified by EvolutionWrapper.
+     WallClock(Hours = __HoursToRun__;),
+     # New segments at least every 24 hours to avoid major data loss.
+     WallClock(Hours = 24;),
+     FinalTime(FinalTime = __FinalTime__;),
+     EccentricityReduction(
+       FinalTime = __EccRedFinalTime__;
+       TargetEcc = __TargetEcc__;
+       ContinueAfterTargetEccReached = __ContinueAfterTargetEccReached__;
+       RoughEccReduction = __RoughEccReduction__;
+       PBandJ = __PBandJ__;
+     ),
+     OnSignal(Signals=USR1),
+     # SIGTERM is sent to preemptee jobs when a preemptor job is submitted
+     OnSignal(
+       Signals = TERM;
+       Name = Preemption;
+       AutoRestartAfterTermination = true;
+     ),
+
+     # These two are the new alternatives to what used
+     # to be dropping of the innermost shell.
+     # The new algorithm will reduce the number of
+     # shells as their relative width with respect to
+     # the AH radius shrinks.
+     Add(EventTrigger = EveryNChunks(NChunks=1;NoTriggerOnZero=true);
+         TerminationCriteria = ;
+         # FIXME: put in sphere dropping
+         ),
+  ;
+); # GrTerminator
+
+
+GrOptions = (
+  Impl=Volume(AmrDriver = ReadFromFile(File=AmrDriver.input);
+              AmrDriverMaxInitIterations = 40; );
+);
+
+CheckpointController = (
+     Checkpoints                       = ;
+     FilenamePrefixForForcedCheckpoint = Checkpoints/;
+);
+
+#----------------------------
+# Evolution info
+#----------------------------
+EvolutionInfo =
+    # We add a random offset to the instances of FlushCachedData
+    # so that, in case many runs are started simultaneously,
+    # the amount of concurrent writing onto the disk by
+    # independent jobs in minimal.
+    Add(Trigger              = WallClockInterval(Hours=1.0;
+                                                 AddRandomOffset=yes);
+        TriggerOnTermination = true;
+        Info                 = FlushCachedData;
+       ),
+    Add(Trigger = WallClockInterval(Hours=1.0;);
+        TriggerOnTermination = true;
+        Info    = CachedH5InfoFile,
+                  MemoryInfoFile,
+                  TimeInfo,
+                  TimeInfoFile(FileName=TimeInfo.dat;);
+        ),
+    Add(Trigger = Never;
+        TriggerOnTermination=true;
+        Info =
+        CpuUsage,
+        MemoryTracker(File = MemProfiler.h5;),
+        ProfilerResults(File = Profiler.h5;),
+        ProfilerResults(File = IncProfiler.h5;
+                        SortedBy = Inclusive;),
+        );
+
+
+#-----------------------
+# Time stepping options
+#-----------------------
+MinimumNumberOfTimeStepsPerChunk=3;
+InitialDeltaTOfEachChunk = __InitialDeltaTChunk__;
+
+OdeErrorObservers = ;
+OdeErrorMeasures=(Relative(DiagnosticFile=OdeErrorRelative.dat));
+OdeIntegrator     = AdaptiveDense(
+  OdeController = ProportionalIntegral(
+    Tolerance = 1.e-8;
+    InitialDt = __InitialDt__;
+    MinimumDt = 1.e-5;
+    TimeThresholdForError = 10;
+    DiagnosticFile = TStepperDiag.dat;
+    FailedDiagnosticFile = FailedTStepperDiag.dat;
+  );
+  OdeStepper = DormandPrince5(
+    ExplicitRhsAlgorithm = MultiVarsRhs(
+      ExplicitRhsAlgorithm0 = Fosh(
+      FoshSystem = DualFrame(
+        FramePrefix = Inertial;
+        EvolutionSystem = GeneralizedHarmonic(
+          SpatialDimension = 3;
+          RhsMethod=Pointwise
+        );
+      );
+      BjorhusCharSpeedCutoff = -1.e-10;
+      InternalBdryMethod     = MultiPenalty;
+      MappedDerivPrefix = Inertial;
+      MapPrefixGridToEvolutionFrame  = GridToInertial;
+      BdryConditionsFilePrefix = Gr;
+
+      InterpolatorForMover = ParallelInterpAndDeriv(
+        GlobalDifferentiator=Standard(
+          TopologicalDifferentiator=Spectral(
+            SetBasisFunctionsFromTimingInfo=yes;
+          )
+        );
+        TopologicalInterpForSubdomains = Spectral;
+        TopologicalInterpForSlices     =
+        SelectFastestInterpolator(
+          TopologicalInterplators =
+          Spectral(SetBasisFunctionsFromTimingInfo=yes;),
+          CardinalInterpolator;
+          );
+        ResolutionChangerForCompatibleSlices = Spectral(
+          BasisFunctions=
+            (ChebyshevGaussLobatto=ChebyshevGaussLobattoMatrix);
+        );
+      );
+
+      BoundaryInfoMover::UseNonBlockingMpi = true;
+      InternalBcFilterHack = true;
+      ); # Fosh
+    ); # MultiVarsRhs
+  ); # DormandPrince
+); # AdaptiveDense
+
+

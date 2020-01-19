@@ -1,0 +1,145 @@
+#!/usr/bin/env perl    # *-*- perl -*-
+use strict;
+use warnings FATAL => 'all';
+################################################################
+
+# Which levels (i.e. resolutions) to run?
+my $MinLev = XXXX;
+my $MaxLev = XXXX;
+
+################################################################
+# Where to find initial data for the ringdown.
+# (this is not initial data of the run, this is the Continuation
+#  directory created by the ringdown script).
+my $IdDir = "XXXX";
+my $IdDirData = "XXXX";
+my $IdDirCpDir = "XXXX";
+
+# Apparent horizon initial L
+my $InitLAh = "XXXX";
+# Maximum L (set to -1 if no maximum)
+my $MaxLAh  = "XXXX";
+
+# Outer boundary radius
+my $Rmax = "XXXX";
+
+# Starting time, final time, observation time, and Checkpoint time.
+# Want the quotes to get all digits.
+my $StartTime         = "XXXX";
+my $FinalTime         = int($StartTime+$Rmax+100);
+my $TstartObserve     = "$StartTime";
+my $DeltaTObserve;
+{
+  my $dt             = "(t-$StartTime)";
+  my $exp            = "exp(-sqr($dt/20.0))";
+  $DeltaTObserve     = ".01+(1.0-$exp)*10.0";
+}
+
+# How often to measure chunkwise control systems
+my $MeasureFractionOfChunk = 0.25;
+
+my $MinTStep          = 1.e-5; # Minimum time step
+
+# Threshold for control systems
+my $Threshold     = "XXXX";
+
+# StateChanger initial times
+my $Tdamping      = "XXXX";
+my $Tstatechange  = 0.3*$Tdamping;
+
+my $TdampSmoothAh = $Tdamping;
+my $TdampT        = $Tdamping;
+my $Tdamp00       = 0.2*$Tdamping;
+
+my $NoChangeDt  = 0.0000001;
+
+# Derived quantities involving statechange
+my $InitialDt           = 0.1*$Tdamp00; # So TChange/Tdamp < 0.3
+my $InitialDeltaTChunk  = $Tstatechange;
+
+# Get the preferences set in the user's ~/.SpEC file
+my %opts = RunGetDotSpecOptions();
+my $TensorYlmDataBaseDir = $opts{"TensorYlmDataBaseDir"};
+
+#==============================================================================
+
+# Resolutions
+for(my $k=$MinLev; $k<=$MaxLev; ++$k) {
+
+  my $Nr  = 10+2*$k;
+  my $L   = 14+2*$k;
+
+  #Accuracy requirements for the grid, and
+  #accuracy requirements for the Ah finder for hole C
+  my $TruncationErrorMax = "XXXX";
+
+  #These are used for both truncation error and residual in the Ahfinder
+  my $AhMaxTrunc = $TruncationErrorMax;
+  my $AhMinTrunc = $AhMaxTrunc/10.0;
+
+  my $DIR  = "Lev".$k."_AA";
+
+  RunInDirectory($DIR,
+                  {"GrDomain.input" => {
+                     "__L__"            => $L,
+                     "__Nr__"           => $Nr,
+                   },
+                   "SpatialCoordMap.input" => {
+                     "__DIR__"         => $IdDir,
+                     "__DIROLD__"      => $IdDirData,
+                   },
+                   "CombinedStateChangers.input" => {
+                     "__NoChangeDt__"     => $NoChangeDt,
+                   },
+                   "GrStateChangers.input" => {
+                     "__MeasureFractionOfChunk__" => $MeasureFractionOfChunk,
+                     "__Threshold__"      => $Threshold,
+                     "__NoChangeDt__"     => $NoChangeDt,
+                     "__MinTStep__"       => $MinTStep,
+                     "__Tdamping__"       => $Tdamping,
+                     "__TdampT__"         => $TdampT,
+                     "__Tdamp00__"        => $Tdamp00,
+                   },
+                   "AmrDriver.input" => {
+                     "__TruncationErrorMax__"=> $TruncationErrorMax,
+                     "__Level__" => $k,
+                    },
+                   "Evolution.input" => {
+                     "__TensorYlmDataBaseDir__" => $TensorYlmDataBaseDir,
+                     "__time__"              => $StartTime,
+                     "__FinalTime__"         => $FinalTime,
+                     "__MinTStep__"          => $MinTStep,
+                     "__InitialDt__"         => $InitialDt,
+                     "__InitialDeltaTChunk__"=> $InitialDeltaTChunk,
+                   },
+                   "GrObservers.input" => {
+                     "__DeltaTObserve__"    => $DeltaTObserve,
+                     "__TstartObserve__"    => $TstartObserve,
+                     "__Rmax__"    => $Rmax,
+                   },
+                   "GrInitialConditions.input" => {
+                     "__DIR__"           => $IdDirData,
+                     "__DIRDATA__"       => $IdDirCpDir,
+                     "__time__"          => $StartTime,
+                     "__DeltaT__"        => $StartTime*(1.e-12),
+                   },
+                   "ApparentHorizonFinders.input" => {
+                     "__InitLAh__"         => $InitLAh,
+                     "__MaxLAh__"          => $MaxLAh,
+                     "__AhGuessRadius__"   => 6,
+                     "__MeasureFractionOfChunk__" => $MeasureFractionOfChunk,
+                     "__AhMinTrunc__"      => $AhMinTrunc,
+                     "__AhMaxTrunc__"      => $AhMaxTrunc,
+                   },
+                   "GrDataBoxItems.input" => {
+                     "__MeasureFractionOfChunk__" => $MeasureFractionOfChunk,
+                     "__TdampSmoothAh__"   => $TdampSmoothAh,
+                     "__Threshold__"       => $Threshold,
+                     "__StartTime__"       => $StartTime,
+                     "__DIR__"             => $IdDir,
+                   },
+                 },
+    {RequireBinDir => 1}
+  );
+}
+

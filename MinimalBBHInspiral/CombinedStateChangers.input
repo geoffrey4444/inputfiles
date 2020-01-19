@@ -1,0 +1,29 @@
+StateChangers=
+    ControlChunks(EventTriggerForApply      =EveryChunk;
+                  );
+    #ControlTimeStep(EventTriggerForApply=Every3StepsIncludingFirst;);
+
+StateChangerEventTriggers =
+    EveryChunk(Trigger=EveryNChunks(NChunks=1;NoTriggerOnZero=yes)),
+    Every3StepsIncludingFirst(Trigger=EveryNSteps(NSteps = 3;
+                                                  NoTriggerOnZero = no;));
+StateChangerTags=
+    ControlChunks(
+      StateChanger=
+      AdjustSubChunksToDampingTimes
+      (TstateOverTdamp = __TstateOverTdamp__;
+       #IgnoreTheseKeys = LambdaFactorA0,LambdaFactorB0;
+       DiagnosticFile  = AdjustSubChunksToDampingTimes.dat;
+       AssumeSingleMultiVarsComponent = no;
+      );
+    );
+ #   ControlTimeStep(
+ #     StateChanger=
+ #     AdjustMaxTstepToDampingTimes
+ #     (TstepOverTdamp       = __TstepOverTdamp__;
+ #      #IncludeOnlyTheseKeys = LambdaFactorA0,LambdaFactorB0;
+ #      DiagnosticFile       = AdjustMaxTstepToDampingTimes.dat;
+ #      AssumeSingleMultiVarsComponent = no;
+ #     );
+ #   );
+

@@ -1,0 +1,40 @@
+DataBoxItems =
+    Boundary(Items =
+             ExtractFromParent(Input=GhGamma0,GhGamma1,GhGamma2),
+             ),
+    Subdomain
+    (Items =
+     ScalarFunction(Output   = ConstraintDampingFalloff1;
+                    Function = Radial(Center     = 0,0,0;
+                                      Profile    = GeneralizedGaussian
+                                      (Width     = 2.5;
+                                       Amplitude = 1.0;
+                                       Center    = 0.0;
+                                       Power     = 2;
+                                       );
+                                      );
+                    ),
+     ScalarFunction(Output   = ConstraintDampingFalloff2;
+                    Function = Radial(Center     = 0,0,0;
+                                      Profile    = GeneralizedGaussian
+                                      (Width     = 100;
+                                       Amplitude = 1.0;
+                                       Center    = 0.0;
+                                       Power     = 2;
+                                       );
+                                      );
+                    ),
+     EvaluateScalarFormula(Output  = GhGamma0;
+                           A       = ConstraintDampingFalloff1;
+                           B       = ConstraintDampingFalloff2;
+                           Formula = 0.001+7.0*A+0.1*B;
+                           ),
+     EvaluateScalarFormula(Output  = GhGamma1;
+                           Formula = -1.0;
+                           ),
+     EvaluateScalarFormula(Output  = GhGamma2;
+                           A       = ConstraintDampingFalloff1;
+                           B       = ConstraintDampingFalloff2;
+                           Formula = 0.001+7.0*A+0.1*B;
+                           ),
+     );

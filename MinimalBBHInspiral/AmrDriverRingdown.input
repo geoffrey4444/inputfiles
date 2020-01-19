@@ -1,0 +1,76 @@
+AmrDriver =
+    ChangeSpectralGrid(
+
+        Level = __Level__;
+        InsaneResolution=150;
+          TriggerEveryNChunks = 1;
+
+          SpectralGridDiagnostics   = GridDiagPowerkappa,GridDiagPowerpsi;
+
+          # Topology changes are not tested in ringdowns (see ticket #903)
+          AllowTopologyChanges = no;
+
+          # The truncation error is computed using
+          # log10(trunc) = ( coef_A log10(value_A)
+          #                + coef_C log10(value_C)
+          #                ) / ( coef_A + coef_C)
+          # where the various coefficients are defined by RadialProfile.
+          # As shown below, coef_C = 1 everwhere, while , near CenterA,
+          # coef_A = 1, giving a truncation error of
+          # (log10(value_A) + log10(value_C))/2 near centerA.
+          # Setting value_A = value_C/1.e4 gives a truncation error of
+          # value_C/1.e2 near centerA.
+          # TruncationErrorMax = __TruncationErrorMax__*1.e-2;
+        TruncationErrorMax =
+        Add(Center=0,0,0;
+            Value = __TruncationErrorMax__;
+            RadialProfile = Constant(Value=1);
+        ),
+        Add(Center=0,0,0;
+            Value = __TruncationErrorMax__*1.e-4;
+            RadialProfile = Gaussian(Width = fabs(30.);
+                                     Center=0;);
+        );
+
+          TruncationErrorBufferWidth        = 0;
+          NCallsBeforeChangingNPointsAgain  = 2;
+          NCallsBeforeSplittingOrJoiningSubdomain    = 20;
+          MapPrefixFromGridToEvolutionFrame = GridToInertial;
+          MaxNDroppedPointsAtInitIteration  = 2;
+
+          # Extra truncation error conditions:
+          # keep the NormOf2Con and NormOf3Con below 
+          TopologicalDiagnostics::ErrorNorm  = NormOf2Con,NormOf3Con;
+          TopologicalDiagnostics::Tolerance  = 1000*(__TruncationErrorMax__);
+          TruncationErrorAdjustmentLimit     = -2;
+          TruncationErrorAdjustmentAlgorithm = QuasiLocal;
+
+          Verbose = yes;
+          ForceDropPileUpModes = yes;
+          EnableAdaptiveFiltering = yes;
+
+          UsePredictorScheme = yes;
+          MaximumAllowedPileUpModes = 3;
+          MaxDeltaL = 1;
+          PreserveLExcision = 0;
+
+        # require the three innermost Shells to have angular resolution
+        # at least 5 higher than AhC's L.  
+        RestrictionsOnExtents =
+        SphereD0|SphereD1|SphereD2(
+            MinL=max(L+5, 10+k);
+            MaxL=50+3*k;          # allow increase with Lev
+            MinExtent0=7+k;
+            MaxExtent0=60+6*k;
+            SurfaceInfo=AhC;
+            SplitAfterMaxExtent0IsReached=no;
+            SplitAfterMaxLIsReached=no;),
+        SphereE*|SphereD3|SphereD4|SphereD5|SphereD6|SphereD7|SphereD8|SphereD9|SphereD??(
+            MinL=10+k;       # same as inspiral SphereC's
+            MinExtent0=7+k;  # same as inspiral SphereC's
+
+            MaxL=50+3*k;       
+            MaxExtent0=60+6*k; # High radial resolution to resolve outgoing merger GW
+            SplitAfterMaxExtent0IsReached=no; # keep non-cutting,
+            SplitAfterMaxLIsReached=no;)      # but make MaxL k-dependent
+    );
