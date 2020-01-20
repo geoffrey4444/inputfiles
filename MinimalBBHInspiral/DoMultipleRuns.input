@@ -11,7 +11,7 @@ use Cwd;
 my $JobName    = undef;    # if undef, set to be the last three directories
 
 # Which levels (i.e. resolutions) to run?
-my $MinLev = 2;
+my $MinLev = 1;
 my $MaxLev = 3;
 
 # Is this an eccentricity reduction run? (1 for yes, 0 for no)
@@ -245,8 +245,10 @@ my $ExtrFracB = $ID_rExcB/$ID_rB;
 #       below must be the same as what is assumed in initial data
 #       (function FindAhCoefs in BBH_ID.py), or else shape control will
 #       not have Q=0 at the start of the evolution.
-my $rExcA = sqrt($ExtrFracA)*$rInitAhA;
-my $rExcB = sqrt($ExtrFracB)*$rInitAhB;
+#my $rExcA = sqrt($ExtrFracA)*$rInitAhA;
+#my $rExcB = sqrt($ExtrFracB)*$rInitAhB;
+my $rExcA = 0.9*$rInitAhA;
+my $rExcB = 0.9*$rInitAhB;
 
 # Approx. initial coord separation between the line connecting the
 # BH centers, excluding the region interior to the horizons.
